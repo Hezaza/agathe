@@ -1,0 +1,6 @@
+node_modules
+public/config.js
+.env
+.env.*
+!.env.example
+.vercel
