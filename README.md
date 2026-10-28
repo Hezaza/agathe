@@ -48,13 +48,18 @@ donc, en contournant l'interface, effectuer toute autre écriture dans la famill
    select id, email, 'Votre nom', 'owner', '{}'::jsonb, true
    from auth.users where email = 'votre-adresse@exemple.com';
    ```
-6. **Project Settings > API** : notez l'**URL du projet**, la clé **anon public** et la clé **service_role**.
+6. **Project Settings > API Keys** : notez l'**URL du projet** (`https://….supabase.co`), la **Publishable key**
+   (`sb_publishable_…`) et une **Secret key** (`sb_secret_…`, bouton « Reveal »). Les anciennes clés « anon » et
+   « service_role » fonctionnent aussi.
 
 ### 2. Vercel
 1. **Add New > Project**, importez le dépôt GitHub `agathe`.
 2. Avant de déployer, **Environment Variables** :
-   `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (valeurs de l'étape 1.6, pour
-   Production, Preview et Development). La clé `service_role` ne doit jamais être mise ailleurs.
+   | Nom | Valeur |
+   |---|---|
+   | `SUPABASE_URL` | Project URL |
+   | `SUPABASE_ANON_KEY` | Publishable key (`sb_publishable_…`) |
+   | `SUPABASE_SERVICE_ROLE_KEY` | Secret key (`sb_secret_…`) — à ne mettre **nulle part ailleurs** |
 3. **Deploy**. Les réglages (`vercel.json`) sont déjà prêts : commande de build `node build.js`, dossier `public`.
 4. Ouvrez l'adresse du site, connectez-vous avec le compte de l'étape 1.4, puis « Comptes & journal »
    pour créer vos utilisateurs.

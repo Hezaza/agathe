@@ -4,3 +4,4 @@ public/config.js
 .env.*
 !.env.example
 .vercel
+public/vendor/

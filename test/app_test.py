@@ -14,7 +14,7 @@ with sync_playwright() as p:
     def route(r):
         u=r.request.url
         if u.endswith('/config.js'):return r.fulfill(body="window.AGATHE_CONFIG={url:'http://mock',anon:'anon'};",content_type='application/javascript')
-        if 'supabase-js' in u:return r.fulfill(body=MOCK,content_type='application/javascript')
+        if u.endswith('/vendor/supabase.js'):return r.fulfill(body=MOCK,content_type='application/javascript')
         if u.startswith('http://localhost'):return r.continue_()
         return r.abort()
     ctx.route('**/*',route)
