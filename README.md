@@ -60,8 +60,11 @@ donc, en contournant l'interface, effectuer toute autre écriture dans la famill
    pour créer vos utilisateurs.
 
 ### 3. Reprise des données de l'ancienne version (claude.ai)
-Le dossier `migration/` n'est pas dans GitHub (données d'entreprise). Voir le fichier de reprise
-fourni séparément : il s'exécute dans le SQL Editor de Supabase.
+Connecté en Super Administrateur : **Comptes & journal > Sauvegarde et reprise des données > Restaurer une
+sauvegarde**, puis choisissez le fichier `agathe-sauvegarde-reprise.json` (fourni séparément, il contient des
+données d'entreprise et ne doit **pas** être mis dans GitHub). Le même écran permet de créer une sauvegarde
+complète (dossiers, clients, fiche entreprise) à tout moment. Les documents joints (PDF, Word, Excel) ne sont
+pas inclus : à rattacher de nouveau depuis l'onglet « Archives » de chaque dossier.
 
 ## Tests automatiques
 
