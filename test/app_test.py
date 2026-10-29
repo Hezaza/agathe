@@ -93,6 +93,14 @@ with sync_playwright() as p:
     # suppression de compte
     po.evaluate("uDel(document.querySelector('#ac1 button:last-child'),ACCS[0].k)");po.wait_for_timeout(200);po.click('#ac1 button:has-text("Confirmer")');po.wait_for_timeout(1500)
     chk('K1 compte supprimé',not [x for x in json.loads(st_(po))['profiles'].values() if x['email']=='agent@obany.ga'])
+    # suppression groupée par cases à cocher (Super Admin)
+    po.evaluate("()=>{const m=JSON.parse(localStorage.getItem('__m'));m.docs['chunks\\u0000c000']={parent:'chunks',id:'c000',data:{rows:[{'N° dossier':'AIT0000126','Nom Client':'A'},{'N° dossier':'AIT0000226','Nom Client':'B'},{'N° dossier':'AIT0000326','Nom Client':'C'}]}};localStorage.setItem('__m',JSON.stringify(m));window.dispatchEvent(new StorageEvent('storage'))}")
+    po.wait_for_timeout(1500);po.evaluate("cm();view='list';render()");po.wait_for_timeout(800)
+    bx=po.locator('#lst .sk');bx.nth(0).check();bx.nth(2).check();po.click('#sb button:has-text("Supprimer la sélection")');po.wait_for_timeout(300)
+    po.fill('#supcf','SUPPRIMER');po.click('#md button:has-text("Supprimer")',timeout=5000);po.wait_for_timeout(2000)
+    left=[r['N° dossier'] for r in json.loads(st_(po))['docs']['chunks\u0000c000']['data']['rows']]
+    chk('M1 suppression groupée : seuls les dossiers cochés sont supprimés',len(left)==1,left)
+    chk('M2 suppression groupée inscrite au journal',any(v['data'].get('a')=='suppression groupée' for k,v in json.loads(st_(po))['docs'].items() if k.startswith('audit')))
     # sauvegarde / restauration (Super Admin)
     po.on('dialog',lambda d:d.accept())
     with po.expect_download() as dl:po.evaluate("bkExport()")
