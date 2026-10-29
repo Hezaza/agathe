@@ -91,6 +91,51 @@
     };
   }
 
+  // Collection suivie en direct : on garde une copie locale et on ne recharge que le document modifié.
+  function liveColl(p, cb, errcb) {
+    var alive = true, map = null, timer = null, poll = null, ch = null, st = { ok: false };
+    function emit() {
+      if (!alive || !map) return;
+      var docs = Object.keys(map).sort().map(function (id) { var d = map[id]; return { id: id, data: function () { return clone(d); } }; });
+      cb({ docs: docs });
+    }
+    function later() { clearTimeout(timer); timer = setTimeout(emit, 120); }
+    async function full() {
+      try {
+        var r = await sb.from('docs').select('id,data').eq('parent', p).range(0, 4999);
+        if (r.error) throw r.error;
+        var m = {}; r.data.forEach(function (x) { m[x.id] = x.data; }); map = m; emit();
+      } catch (e) { if (alive && errcb) errcb(perr(e)); }
+    }
+    async function one(id) {
+      try {
+        var r = await sb.from('docs').select('data').eq('parent', p).eq('id', id).maybeSingle();
+        if (r.error) throw r.error;
+        if (!map) return;
+        if (r.data) map[id] = r.data.data; else delete map[id];
+        later();
+      } catch (e) { full(); }
+    }
+    function onEvent(pl) {
+      if (!alive) return;
+      var ev = pl && pl.eventType, n = (pl && pl.new) || {}, o = (pl && pl.old) || {};
+      if (!ev || !map) return full();
+      if (ev === 'DELETE') { if (o.parent !== p || !o.id) return; delete map[o.id]; return later(); }
+      if (n.parent !== p || !n.id) return;
+      if (n.data !== undefined && !(pl.errors && pl.errors.length)) { map[n.id] = n.data; later(); }
+      else one(n.id);
+    }
+    full();
+    try {
+      ch = sb.channel('agathe-' + (++seq) + '-' + Math.random().toString(36).slice(2, 7));
+      ch.on('postgres_changes', { event: '*', schema: 'public', table: 'docs', filter: 'parent=eq.' + p }, onEvent)
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'docs' }, onEvent)
+        .subscribe(function (s) { var was = st.ok; st.ok = (s === 'SUBSCRIBED'); if (st.ok && !was && map) full(); });
+    } catch (e) {}
+    poll = setInterval(function () { if (!st.ok) full(); }, 20000);
+    return function () { alive = false; clearTimeout(timer); clearInterval(poll); try { if (ch) sb.removeChannel(ch); } catch (e) {} };
+  }
+
   function collRef(path) {
     var p = segs(path).join('/'), isProf = p === 'profiles', ord = null, lim = null;
     var q = {
@@ -100,7 +145,8 @@
       where: function () { return q; },
       get: async function () { try { return await load(); } catch (e) { throw perr(e); } },
       onSnapshot: function (cb, errcb) {
-        return watch(isProf ? 'profiles' : 'docs', isProf ? null : 'parent=eq.' + p, load, cb, errcb);
+        if (isProf || ord || lim) return watch(isProf ? 'profiles' : 'docs', isProf ? null : 'parent=eq.' + p, load, cb, errcb);
+        return liveColl(p, cb, errcb);
       }
     };
     async function load() {
