@@ -212,7 +212,17 @@ function dc(k,id){const[c,i]=id.split('|'),r=chunks[c][i],G=x=>g(r,x),ty=G('Type
 if(k=='o'){const V=x=>esc(x||''),D=x=>x?`<span class="dv">${esc(x)}</span>`:'<span class="dt"></span>',P=(l,v)=>`<p><b>${l} :</b> ${V(v)}</p>`,cl=typeof cFind=='function'?cFind(G(FC)):null;
 h=`<div class="fo2"><h2 class="fo2-t">${esc(ty)}</h2><div class="fo2-bar"></div><div class="fo2-row"><span class="fo2-lab">N° DOSSIER</span><div class="fo2-num">${esc(nd)}</div></div><div class="fo2-g">${P("Date d’ouverture",fd(G("Date d'ouverture")).replace(/&amp;/g,'&'))}<p></p>${P('Client',G(FC))}${P('N° Répertoire',G('Numéro de répertoire'))}${P('Adresse',G('Adresse')||(cl&&typeof fa=='function'?fa(cl):''))}${P('N° OT',G('N° OT'))}${P(air?'Avion':'Navire',G('Nom Navire')||G('N° voyage/vol'))}${P(bl,G('N° BL/LTA'))}${P('Nbre de colis',G('Nbre de colis'))}${P('Provenance',G('Lieu Origine'))}${P('Poids',G('Poids'))}${P('CDE',G('N° Commande Client'))}${ex?P('Destination',G('Lieu Destination')):''}${!air&&(G('Containers')||G('Type Conteneur'))?P('N° TC',[G('Type Conteneur'),G('Containers')].filter(Boolean).join(' – ')):''}</div><p class="fo2-full"><b>Désignation :</b> ${V(G('Nature marchandises'))}</p><p class="fo2-decl"><span><b>TYPE DE DÉCLARATION :</b> ${V(G('Type de déclaration'))}</span><span><b>RÉGIME :</b> ${V(G('Code régime')||G('Régime'))}</span><span><b>CODE ADI :</b> ${V(G('Code ADI'))}</span></p><h3 class="fo2-op">OPÉRATIONS DOUANIÈRES</h3><div class="fo2-o"><p><b>Déclarant :</b>${D('')}<b>Opératrice :</b>${D(G('Saisissant'))}</p><p><b>N° Déclaration :</b>${D(G('N° Déclaration'))}<b>Date :</b>${D(fd(G('Date Déclaration validée')).replace(/&amp;/g,'&'))}<b>Inspecteur :</b>${D(G('Inspecteur'))}</p><p><b>Observations / Instructions particulières :</b><span class="dt"></span></p><p class="ln"></p><p class="ln"></p><p class="ln"></p></div></div>`}
 else if(k=='b')h=`<h2 class="c">BON DE LIVRAISON</h2><div class="gr">${F('N° Dossier',nd)}${F('Client',G(FC))}${F("Lieu d'enlèvement",air?'AEROPORT POG':G('Lieu Destination'))}${F('Date',fd(today).replace(/&amp;/g,'&'))}${F('N°',G('N° BL/LTA'))}${F(air?'Vol':'Navire',[G('Nom Navire'),G('N° voyage/vol')].filter(Boolean).join(' '))}${F('Commande',G('N° Commande Client'))}${F('Du',fd(G(AR)))}</div><table style="width:100%;border-collapse:collapse;margin-top:14px"><tr><th>Nombre de colis<th>Libellé<th>Poids / Volume<th>Observations</tr><tr><td>${esc(G('Nbre de colis'))}<td>${esc(G('Nature marchandises'))}<td>${esc(G('Poids'))} ${esc(G('Volume'))}<td></tr><tr><td><td><td><td></tr><tr><td><td><td><td></tr></table>${sg('Agent '+co,'Nom et visa du Client')}`;
-else h=`<h2 class="c">ORDRE DE TRANSIT</h2><div class="nb">${esc(G('N° OT')||nd)}</div><div class="gr">${F('Date',fd(G("Date d'ouverture")||today).replace(/&amp;/g,'&'))}${F('N° dossier',nd)}${F("Donneur d'ordre",G(FC))}${F('Transitaire',brand.nom||'')}</div><p>Le donneur d'ordre charge le transitaire d'accomplir les formalités de transit et de douane relatives à l'opération suivante :</p><div class="gr">${F('Opération',ty)}${F('Régime',G('Régime'))}${F(nv,G('Nom Navire'))}${F(bl,G('N° BL/LTA'))}${F('Provenance',G('Lieu Origine'))}${F('Destination',G('Lieu Destination'))}${F('Fournisseur',G('Nom Fournisseur'))}${F('Commande',G('N° Commande Client'))}${F('Nbre de colis',G('Nbre de colis'))}${F('Poids',G('Poids'))}${F('Volume',G('Volume'))}${F('Conteneurs',[G('Type Conteneur'),G('Containers')].filter(Boolean).join(' – '))}</div>${F('Désignation',G('Nature marchandises'))}<p><b>Instructions particulières :</b></p><p>${'.'.repeat(120)}</p><p>${'.'.repeat(120)}</p>${sg("Le donneur d'ordre (nom, cachet et signature)",'Le transitaire '+co)}`;
+else{const V=x=>esc(x||''),lst=k=>String(G(k)||'').split(/\n|;/).map(x=>x.trim()).filter(Boolean),dR=lst('OT documents remis'),dM=lst('OT documents manquants'),N=Math.max(8,dR.length,dM.length),
+eta=ex?(G('Date départ réelle')||G('Date départ prévu')):(G(AR)||G(AP)),ins=String(G('OT instructions')||'').trim(),
+I=(l,v)=>`<div class="ot2-i"><b>${l} :</b> <span>${V(v)}</span></div>`,cb=(t)=>`<div class="ot2-cb"><span class="ot2-box">${t?'&#9745;':'&#9744;'}</span><span class="ot2-l">${V(t)}</span></div>`;
+h=`<div class="ot2"><div class="ot2-t"><div>ORDRE DE TRANSIT</div><div>N°${esc(G('N° OT')||nd)}</div></div>
+<div class="ot2-info">${I('CLIENT',G(FC))}${I('MONTANT FACTURE',G('Montant facture fournisseur'))}${I('MONTANT FRET',G('Montant fret'))}${I(air?'AVION':'NAVIRE',[G('Nom Navire'),G('N° voyage/vol')].filter(Boolean).join(' '))}${I(bl,G('N° BL/LTA'))}${I(ex?'E.T.D':'E.T.A',fd(eta).replace(/&amp;/g,'&'))}${I('NOMBRE DE COLIS',G('Nbre de colis'))}${I('CDE',G('N° Commande Client'))}${I('POIDS',G('Poids'))}</div>
+<div class="ot2-ref">N° dossier : <b>${esc(nd)}</b>${G('Nom Fournisseur')?` &nbsp;·&nbsp; Fournisseur : <b>${V(G('Nom Fournisseur'))}</b>`:''}${!air&&G('Containers')?` &nbsp;·&nbsp; Conteneurs : <b>${V([G('Type Conteneur'),G('Containers')].filter(Boolean).join(' – '))}</b>`:''}</div>
+<table class="ot2-tb"><tr><th>NATURE DE LA MARCHANDISE</th><th>RÉGIME DOUANIER DEMANDÉ</th></tr><tr><td>${V(G('Nature marchandises'))}</td><td class="ot2-c">${V(G('Régime'))}</td></tr>
+<tr><th colspan="2">INSTRUCTIONS PARTICULIÈRES</th></tr><tr><td colspan="2" class="ot2-att">${ins?`<div class="ot2-ins">${esc(ins).replace(/\n/g,'<br>')}</div>`:''}<b>Nous attestons sur l’honneur que les documents remis au Transitaire sont authentiques, en cas de non-respect, le Client se porte pénalement et civilement responsable.</b></td></tr>
+<tr><th>DOCUMENTS REMIS AU TRANSITAIRE</th><th>DOCUMENTS MANQUANTS</th></tr></table>
+<div class="ot2-docs"><div>${Array.from({length:N},(_,k)=>cb(dR[k])).join('')}</div><div>${Array.from({length:N},(_,k)=>cb(dM[k])).join('')}</div></div>
+<div class="ot2-sg"><div><b>TRANSMIS CONFORME PAR LE CLIENT</b><br><b>Date, Signature et Cachet</b></div><div><b>Reçu conforme par le transitaire</b><br><b>Date, Signature et Cachet</b></div></div></div>`}
 pv(h)}
 let selS=new Set();
 const _fl=fl;fl=function(){_fl();if(!can('del'))return;const t=$('#lst table');if(!t)return;t.querySelectorAll('tr').forEach((tr,i)=>{if(i==0){tr.insertAdjacentHTML('afterbegin','<th><input type="checkbox" onclick="selAll(this.checked)">');return}const m=/op\('([^']+)'\)/.exec(tr.getAttribute('onclick')||'');if(!m)return;tr.insertAdjacentHTML('afterbegin',`<td onclick="event.stopPropagation()"><input type="checkbox" class="sk" data-id="${m[1]}" ${selS.has(m[1])?'checked':''} onchange="selT(this)"></td>`)});$('#lst').insertAdjacentHTML('afterbegin','<div class="bar" id="sb"></div>');selU()};
@@ -227,7 +237,7 @@ W.forEach(([c,keep])=>{chunks[c]=JSON.parse(JSON.stringify(keep))});selS.clear()
 try{await Promise.all(W.map(([c,keep])=>db.collection('chunks').doc(c).set({rows:keep})));st(n+' dossier(s) supprimé(s)',4000);setTimeout(()=>aud('suppression groupée',{nombre:n,dossiers:nums.join(', ').slice(0,900)}),800)}
 catch(e){Object.assign(chunks,prev);build();if($('#md').style.display!='flex')render();st('Échec de la suppression : '+(e.message||e.code)+'. Aucun dossier n’a été retiré de l’écran.',8000);try{loadChunks(await db.collection('chunks').get())}catch(x){}}}
 PX['DIVERS IMPORT']='DIT';PX['DIVERS EXPORT']='DET';
-NF.push('N° OT','Numéro de répertoire');SEC[1][1].push('Numéro de répertoire');
+NF.push('N° OT','Numéro de répertoire');SEC[1][1].push('Numéro de répertoire');SEC.push(['Ordre de transit',['Montant facture fournisseur','Montant fret']]);
 function nums(t,nd){const d=nd.replace(/\D/g,'').slice(-6),m=/MARITIME/.test(t),a=/A[ÉE]RIEN/.test(t);if(!m&&!a)return['',''];const o=(a?'1':'2')+d;return[o,(a?'A':'M')+o]}
 function fillNum(){const t=$('#n0').value,nd=$('#n_nd').value=nxt2(t);fn2(t,nd)}
 function fn2(t,nd){const[o,r]=nums(t,nd);$('#n'+NF.indexOf('N° OT')).value=o;$('#n'+NF.indexOf('Numéro de répertoire')).value=r}
@@ -495,22 +505,33 @@ document.head.insertAdjacentHTML('beforeend','<style>'+[
 '.fo2-o p.ln,#pv .pg .fo2-o p.ln{border-bottom:2px dotted #000;height:22px;margin:0 0 6px 6mm;padding:0}',
 '#pv .pg:not(.inv){padding-top:12mm;padding-bottom:22mm}'
 ].join('')+'</style>');
-/* ===== Ordre de transit : présentation compacte, toujours sur une seule page A4 ===== */
+/* ===== Ordre de transit : modèle Trans Obany (documents remis / manquants), une seule page A4 ===== */
 document.head.insertAdjacentHTML('beforeend','<style>'+[
-'#pv .pg.ot,.pg.ot{--otf:15px}',
-'#pv .pg.ot h2.c{font-size:20px;margin:2px 0 8px}',
-'#pv .pg.ot .nb{font-size:28px;padding:4px;margin:6px auto 12px;max-width:300px}',
-'#pv .pg.ot p,.pg.ot p{font-size:var(--otf);margin:0 0 7px;line-height:1.3}',
-'#pv .pg.ot .gr{column-gap:22px}',
-'#pv .pg.ot .ot-int{margin:4px 0 9px}',
-'#pv .pg.ot .ot-dots{border-bottom:1.5px dotted #000;height:calc(var(--otf) * 1.5);margin:0 0 4px}',
-'#pv .pg.ot .sg{margin-top:34px;font-size:var(--otf)}'
+'#pv .pg.ot,.pg.ot{--otf:14px}',
+'.ot2{font:var(--otf)/1.3 Arial,sans-serif;color:#000}',
+'#pv .pg.ot .ot2-top>.hd img,.pg.ot .ot2-top>.hd img{height:28mm!important;width:auto;max-width:80mm}','.ot2-top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:0 0 14px}.ot2-top>.hd{margin:0!important;border:0!important;flex:0 0 auto}','.ot2-t{text-align:center;font:bold calc(var(--otf) + 7px)/1.25 Georgia,"Times New Roman",serif;color:#333;flex:1;max-width:58%;margin:0 0 6px;padding-bottom:6px;border-bottom:4px double #333}',
+'.ot2-info{display:grid;grid-template-columns:1.25fr 1.25fr 1fr;gap:10px 14px;margin:0 0 8px}',
+'.ot2-i{font-weight:700}.ot2-i span{font-weight:700}',
+'.ot2-ref{font-size:calc(var(--otf) - 2px);margin:0 0 10px;color:#222}',
+'.ot2-tb{width:100%;border-collapse:collapse;margin:0;table-layout:fixed}',
+'#pv .pg .ot2-tb th,#pv .pg .ot2-tb td,.ot2-tb th,.ot2-tb td{border:1.5px solid #333;height:auto;padding:6px 8px;font-size:var(--otf);background:#fff;color:#000}',
+'.ot2-tb th{font:bold calc(var(--otf) + 1px) Arial,sans-serif;text-align:center;color:#333}',
+'.ot2-tb td.ot2-c{text-align:center;font-size:calc(var(--otf) + 3px)}',
+'.ot2-att{font-size:var(--otf)}.ot2-ins{margin-bottom:6px;font-weight:400}',
+'.ot2-docs{display:grid;grid-template-columns:1fr 1fr;gap:0 26px;margin:8px 0 0}',
+'.ot2-cb{display:flex;align-items:flex-end;gap:6px;height:calc(var(--otf) * 2.4)}',
+'.ot2-box{font-size:calc(var(--otf) + 6px);line-height:1}',
+'.ot2-l{flex:1;border-bottom:1px solid #333;padding:0 0 2px 4px;min-height:1.2em}',
+'.ot2-sg{display:flex;justify-content:space-between;gap:20px;margin-top:30px}.ot2-sg>div{width:48%}',
+'#pv .pg.ot>.hd{border-bottom:0;margin-bottom:6px}'
 ].join('')+'</style>');
-function otFit(){const g=document.querySelector('#pv .pg.ot');if(!g)return;const dots=[...g.querySelectorAll('p')].filter(x=>/^\.{20,}$/.test(x.textContent.trim()));dots.forEach(x=>{x.textContent='';x.className='ot-dots'});
-const intro=[...g.querySelectorAll('p')].find(x=>/charge le transitaire/.test(x.textContent));if(intro)intro.classList.add('ot-int');
+function otFit(){const g=document.querySelector('#pv .pg.ot');if(!g)return;
 const A4=()=>g.getBoundingClientRect().width*297/210,used=()=>{const ft=g.querySelector('.ft'),last=[...g.children].filter(e=>e!==ft&&!e.classList.contains('agsig')).pop();const r=g.getBoundingClientRect(),b=last?last.getBoundingClientRect().bottom-r.top:0,fh=ft?ft.getBoundingClientRect().height:0;return b+fh+parseFloat(getComputedStyle(g).paddingBottom)*0.55};
-let f=15;g.style.setProperty('--otf',f+'px');while(used()>A4()-4&&f>10.5){f-=0.5;g.style.setProperty('--otf',f+'px')}}
-{const f=window.dc;window.dc=function(k,id){const r=f.apply(this,arguments);if(k=='t'){try{const g=document.querySelector('#pv .pg');if(g){g.classList.add('ot');otFit()}}catch(e){console.error(e)}}return r}}
+let f=14;g.style.setProperty('--otf',f+'px');while(used()>A4()-4&&f>9.5){f-=0.5;g.style.setProperty('--otf',f+'px')}}
+{const f=window.dc;window.dc=function(k,id){const r=f.apply(this,arguments);if(k=='t'){try{const g=document.querySelector('#pv .pg');if(g){g.classList.add('ot');const hd=g.querySelector(':scope>.hd'),t=g.querySelector('.ot2-t');if(hd&&t){const top=document.createElement('div');top.className='ot2-top';g.insertBefore(top,hd);top.appendChild(hd);top.appendChild(t)}otFit()}}catch(e){console.error(e)}}return r}}
+/* ===== Fiche dossier : documents remis / manquants pour l'ordre de transit (saisie manuelle) ===== */
+{const f=window.op;window.op=function(id){const r0=f.apply(this,arguments);try{const q=id.split('|'),r=chunks[q[0]]&&chunks[q[0]][q[1]];const h=[...document.querySelectorAll('#md h2')].find(x=>x.textContent.trim()=='Ordre de transit');if(r&&h&&!document.getElementById('otdoc')){const box=h.nextElementSibling,ta=(k,l,ph)=>`<div style="flex:1;min-width:240px"><label>${l}</label><textarea rows="5" style="width:100%" placeholder="${ph}" data-k="${k}" onchange="sv('${id}',this.dataset.k,this.value)">${esc(g(r,k))}</textarea></div>`;
+(box||h).insertAdjacentHTML('afterend','<div id="otdoc" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">'+ta('OT documents remis','Documents remis au transitaire (un par ligne)','Facture\nColisage\nLTA')+ta('OT documents manquants','Documents manquants (un par ligne)','Certificat d’origine')+ta('OT instructions','Instructions particulières (facultatif)','')+'</div><p class="a1" style="margin:4px 0 0">Ces listes s’impriment sur l’ordre de transit, avec une case par document.</p>')}}catch(e){console.error(e)}return r0}}
 /* ===== Impression navigateur : fiche d'ouverture, ordre de transit, bon de livraison sur une seule feuille A4 ===== */
 document.head.insertAdjacentHTML('beforeend','<style>@page{size:A4;margin:0}@media print{html,body{margin:0!important;padding:0!important;background:#fff!important}#pv .pg:not(.inv){width:auto!important;max-width:none!important;height:100vh!important;min-height:0!important;max-height:100vh!important;box-sizing:border-box!important;padding:12mm 16mm 22mm!important;margin:0!important;overflow:hidden!important;break-after:avoid;break-inside:avoid;page-break-after:avoid;box-shadow:none!important;border:0!important}#pv:has(.pg:not(.inv)){height:100vh;overflow:hidden}}</style>');
 /* ===== Écran Entreprise : un seul enregistrement pour toute la fiche ===== */
