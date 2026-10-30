@@ -495,6 +495,22 @@ document.head.insertAdjacentHTML('beforeend','<style>'+[
 '.fo2-o p.ln,#pv .pg .fo2-o p.ln{border-bottom:2px dotted #000;height:22px;margin:0 0 6px 6mm;padding:0}',
 '#pv .pg:not(.inv){padding-top:12mm;padding-bottom:22mm}'
 ].join('')+'</style>');
+/* ===== Ordre de transit : présentation compacte, toujours sur une seule page A4 ===== */
+document.head.insertAdjacentHTML('beforeend','<style>'+[
+'#pv .pg.ot,.pg.ot{--otf:15px}',
+'#pv .pg.ot h2.c{font-size:20px;margin:2px 0 8px}',
+'#pv .pg.ot .nb{font-size:28px;padding:4px;margin:6px auto 12px;max-width:300px}',
+'#pv .pg.ot p,.pg.ot p{font-size:var(--otf);margin:0 0 7px;line-height:1.3}',
+'#pv .pg.ot .gr{column-gap:22px}',
+'#pv .pg.ot .ot-int{margin:4px 0 9px}',
+'#pv .pg.ot .ot-dots{border-bottom:1.5px dotted #000;height:calc(var(--otf) * 1.5);margin:0 0 4px}',
+'#pv .pg.ot .sg{margin-top:34px;font-size:var(--otf)}'
+].join('')+'</style>');
+function otFit(){const g=document.querySelector('#pv .pg.ot');if(!g)return;const dots=[...g.querySelectorAll('p')].filter(x=>/^\.{20,}$/.test(x.textContent.trim()));dots.forEach(x=>{x.textContent='';x.className='ot-dots'});
+const intro=[...g.querySelectorAll('p')].find(x=>/charge le transitaire/.test(x.textContent));if(intro)intro.classList.add('ot-int');
+const A4=()=>g.getBoundingClientRect().width*297/210,used=()=>{const ft=g.querySelector('.ft'),last=[...g.children].filter(e=>e!==ft&&!e.classList.contains('agsig')).pop();const r=g.getBoundingClientRect(),b=last?last.getBoundingClientRect().bottom-r.top:0,fh=ft?ft.getBoundingClientRect().height:0;return b+fh+parseFloat(getComputedStyle(g).paddingBottom)*0.55};
+let f=15;g.style.setProperty('--otf',f+'px');while(used()>A4()-4&&f>10.5){f-=0.5;g.style.setProperty('--otf',f+'px')}}
+{const f=window.dc;window.dc=function(k,id){const r=f.apply(this,arguments);if(k=='t'){try{const g=document.querySelector('#pv .pg');if(g){g.classList.add('ot');otFit()}}catch(e){console.error(e)}}return r}}
 /* ===== Écran Entreprise : un seul enregistrement pour toute la fiche ===== */
 function cfgDraft(){const o={};['bn','bt','bv','bp','iv_e','iv_p'].forEach(id=>{const e=$('#'+id);if(e)o[id]=e.value});return o}
 const _cfg6=cfg;cfg=function(){if(!can('adm'))return;_cfg6();const b=$('#md .bx');if(!b||!$('#bn'))return;
