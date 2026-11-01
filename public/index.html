@@ -532,6 +532,45 @@ let f=14;g.style.setProperty('--otf',f+'px');while(used()>A4()-4&&f>9.5){f-=0.5;
 /* ===== Fiche dossier : documents remis / manquants pour l'ordre de transit (saisie manuelle) ===== */
 {const f=window.op;window.op=function(id){const r0=f.apply(this,arguments);try{const q=id.split('|'),r=chunks[q[0]]&&chunks[q[0]][q[1]];const h=[...document.querySelectorAll('#md h2')].find(x=>x.textContent.trim()=='Ordre de transit');if(r&&h&&!document.getElementById('otdoc')){const box=h.nextElementSibling,ta=(k,l,ph)=>`<div style="flex:1;min-width:240px"><label>${l}</label><textarea rows="5" style="width:100%" placeholder="${ph}" data-k="${k}" onchange="sv('${id}',this.dataset.k,this.value)">${esc(g(r,k))}</textarea></div>`;
 (box||h).insertAdjacentHTML('afterend','<div id="otdoc" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">'+ta('OT documents remis','Documents remis au transitaire (un par ligne)','Facture\nColisage\nLTA')+ta('OT documents manquants','Documents manquants (un par ligne)','Certificat d’origine')+ta('OT instructions','Instructions particulières (facultatif)','')+'</div><p class="a1" style="margin:4px 0 0">Ces listes s’impriment sur l’ordre de transit, avec une case par document.</p>')}}catch(e){console.error(e)}return r0}}
+/* ===== Assistant AGATHE (chat IA) ===== */
+document.head.insertAdjacentHTML('beforeend','<style>'+[
+'#chatbtn{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:max(18px,env(safe-area-inset-bottom,0px));z-index:60;border:0;border-radius:999px;padding:12px 18px;background:linear-gradient(135deg,var(--navy),var(--ac));color:#fff;font:700 15px Arial,sans-serif;box-shadow:0 8px 24px rgba(11,42,91,.35);cursor:pointer;display:flex;gap:8px;align-items:center}',
+'#chatbtn:hover{filter:brightness(1.08)}#chatbtn[hidden]{display:none!important}',
+'#agc{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:max(18px,env(safe-area-inset-bottom,0px));z-index:61;width:min(420px,calc(100vw - 24px));height:min(620px,calc(100vh - 40px));background:#fff;border-radius:16px;box-shadow:0 18px 50px rgba(11,42,91,.35);display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--bd)}',
+'#agc[hidden]{display:none!important}',
+'#agc .h{background:linear-gradient(135deg,var(--navy),var(--ac));color:#fff;padding:12px 14px;display:flex;align-items:center;gap:10px}',
+'#agc .h b{font-size:16px;letter-spacing:.06em}#agc .h small{display:block;opacity:.85;font-size:11.5px}#agc .h button{margin-left:auto;background:rgba(255,255,255,.15);color:#fff;border:0;border-radius:8px;padding:5px 9px;cursor:pointer}',
+'#agm{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}',
+'.agq,.aga{max-width:88%;padding:9px 12px;border-radius:14px;font-size:14px;line-height:1.45;white-space:normal;overflow-wrap:anywhere}',
+'.agq{align-self:flex-end;background:var(--ac);color:#fff;border-bottom-right-radius:4px}',
+'.aga{align-self:flex-start;background:#fff;color:var(--tx);border:1px solid var(--bd);border-bottom-left-radius:4px}',
+'.aga ul{margin:4px 0;padding-left:18px}.aga p{margin:0 0 6px}.aga p:last-child{margin:0}',
+'.aga a.dn{color:var(--ac);font-weight:700;cursor:pointer;text-decoration:underline}',
+'.aga.err{border-color:#e7b4b4;background:#fff4f4;color:#8a1f1f}',
+'.agt{align-self:flex-start;color:var(--mu);font-size:13px;font-style:italic}',
+'#agsg{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 8px;background:var(--bg)}#agsg button{font-size:12.5px;border-radius:999px;padding:5px 10px}',
+'#agf{display:flex;gap:8px;padding:10px;border-top:1px solid var(--bd);background:#fff}',
+'#chatin{flex:1;resize:none;border:1px solid var(--bd);border-radius:10px;padding:8px 10px;font:14px/1.35 Arial,sans-serif;max-height:110px}',
+'#agf button{border-radius:10px}',
+'@media print{#chatbtn,#agc{display:none!important}}'
+].join('')+'</style>');
+let agHist=[],agBusy=false;
+function agMd(t){let h=esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+h=h.replace(/\b([AMD][IE]T\d{5,7})\b/g,m=>`<a class="dn" onclick="agOpen('${m}')">${m}</a>`);
+const L=h.split('\n');let out='',ul=false;L.forEach(l=>{const m=/^\s*[-•*]\s+(.*)/.exec(l);if(m){if(!ul){out+='<ul>';ul=true}out+='<li>'+m[1]+'</li>'}else{if(ul){out+='</ul>';ul=false}if(l.trim())out+='<p>'+l+'</p>'}});if(ul)out+='</ul>';return out}
+function agOpen(n){const r=rows.find(x=>g(x,'N° dossier')==n);if(!r)return st('Dossier '+n+' introuvable',4000);if(!can('open'))return st('Ouverture de la fiche non autorisée pour votre compte',4000);op(r._c+'|'+r._i)}
+function agUi(){if(!$('#chatbtn')){document.body.insertAdjacentHTML('beforeend','<button id="chatbtn" hidden onclick="agToggle(1)" title="Assistant AGATHE">💬 Assistant</button><div id="agc" hidden role="dialog" aria-label="Assistant AGATHE"><div class="h"><span style="font-size:22px">🤖</span><div><b>AGATHE</b><small>Assistant : dossiers, aide, douane</small></div><button onclick="agReset()" title="Nouvelle conversation">↺</button><button onclick="agToggle(0)" aria-label="Fermer">✕</button></div><div id="agm"></div><div id="agsg"></div><form id="agf" onsubmit="event.preventDefault();agSend()"><textarea id="chatin" rows="1" placeholder="Posez votre question…" onkeydown="if(event.key==\'Enter\'&&!event.shiftKey){event.preventDefault();agSend()}"></textarea><button class="btn p" id="chatsend">Envoyer</button></form></div>');agReset()}
+$('#chatbtn').hidden=!(AUTHED&&can('chat'))||!$('#agc').hidden}
+function agToggle(o){$('#agc').hidden=!o;$('#chatbtn').hidden=!!o;if(o)setTimeout(()=>$('#chatin').focus(),50)}
+function agReset(){agHist=[];$('#agm').innerHTML='<div class="aga"><p>Bonjour'+(ident?' '+esc(ident):'')+' ! Je suis l’assistant d’AGATHE. Je peux retrouver un dossier, lister les alertes, compter les dossiers d’un client, expliquer comment utiliser le logiciel ou répondre à une question générale de transit.</p></div>';
+const S=['Quels dossiers sont en retard de livraison ?','Combien de dossiers en cours par client ?','Comment imprimer un ordre de transit ?','Qu’est-ce que le régime TTC ?'];$('#agsg').innerHTML=S.map(x=>`<button type="button" onclick="agSend(this.textContent)">${esc(x)}</button>`).join('')}
+async function agSend(txt){if(agBusy)return;const i=$('#chatin'),q=String(txt||i.value).trim();if(!q)return;i.value='';$('#agsg').innerHTML='';
+const m=$('#agm');m.insertAdjacentHTML('beforeend','<div class="agq">'+esc(q)+'</div><div class="agt" id="agw">AGATHE réfléchit…</div>');m.scrollTop=m.scrollHeight;agHist.push({role:'user',content:q});agBusy=true;$('#chatsend').disabled=true;
+try{const s=(await SB.auth.getSession()).data.session;const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(s?s.access_token:'')},body:JSON.stringify({messages:agHist.slice(-20)})});let j={};try{j=await r.json()}catch(e){}
+if(!r.ok)throw new Error(j.error||('Erreur '+r.status));agHist.push({role:'assistant',content:j.answer});m.insertAdjacentHTML('beforeend','<div class="aga">'+agMd(j.answer)+'</div>')}
+catch(e){agHist.pop();m.insertAdjacentHTML('beforeend','<div class="aga err">'+esc(e.message||String(e))+'</div>')}
+finally{const w=$('#agw');if(w)w.remove();agBusy=false;$('#chatsend').disabled=false;m.scrollTop=m.scrollHeight}}
+{const f=render;render=function(){f();try{agUi()}catch(e){console.error(e)}}}
 /* ===== Impression navigateur : fiche d'ouverture, ordre de transit, bon de livraison sur une seule feuille A4 ===== */
 document.head.insertAdjacentHTML('beforeend','<style>@page{size:A4;margin:0}@media print{html,body{margin:0!important;padding:0!important;background:#fff!important}#pv .pg:not(.inv){width:auto!important;max-width:none!important;height:100vh!important;min-height:0!important;max-height:100vh!important;box-sizing:border-box!important;padding:12mm 16mm 22mm!important;margin:0!important;overflow:hidden!important;break-after:avoid;break-inside:avoid;page-break-after:avoid;box-shadow:none!important;border:0!important}#pv:has(.pg:not(.inv)){height:100vh;overflow:hidden}}</style>');
 /* ===== Écran Entreprise : un seul enregistrement pour toute la fiche ===== */
@@ -668,7 +707,8 @@ const PGRP=[['Pages visibles',[['p_dash','Tableau de bord'],['p_list','Liste des
 ['Dossiers',[['open','Ouvrir la fiche d’un dossier'],['create','Ouvrir (créer) un nouveau dossier'],['edit','Modifier les informations et les étapes d’un dossier'],['annul','Annuler un dossier'],['del','Supprimer un dossier']]],
 ['Documents et facturation',[['docs','Imprimer fiche d’ouverture, ordre de transit, bon de livraison'],['billw','Créer et modifier les factures'],['rec','Récapitulatif des prestations (tous les dossiers)'],['dview','Consulter les documents joints (onglet Archives)'],['dadd','Ajouter des documents joints (remplacer les siens)'],['ddel','Supprimer ses propres documents joints']]],
 ['Clients',[['clients','Créer et modifier les clients'],['cdel','Supprimer un client']]],
-['Données',[['export','Exporter (Excel, PDF, récap client)'],['import','Importer un tableau Excel']]]];
+['Données',[['export','Exporter (Excel, PDF, récap client)'],['import','Importer un tableau Excel']]],
+['Assistant',[['chat','Utiliser l’assistant AGATHE (questions en langage libre, IA)']]]];
 const PALL=PGRP.flatMap(g=>g[1].map(p=>p[0]));
 const PLAB=Object.fromEntries(PGRP.flatMap(g=>g[1]));
 const rbCat=()=>resp?'SA':'U';

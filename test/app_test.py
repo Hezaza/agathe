@@ -6,7 +6,7 @@ from playwright.sync_api import sync_playwright
 ROOT=pathlib.Path(__file__).resolve().parent.parent
 MOCK=(ROOT/'test/mock_supabase.js').read_text()
 srv=subprocess.Popen(['python3','-m','http.server','8766','--directory',str(ROOT/'public')],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);time.sleep(1)
-R=[];ERR=[]
+R=[];ERR=[];CHAT=[];CHAT_MODE=['ok']
 def chk(n,c,i=''):
     R.append(bool(c));print(('OK   ' if c else 'FAIL ')+n+('' if c else ' | '+str(i)))
 with sync_playwright() as p:
@@ -15,6 +15,10 @@ with sync_playwright() as p:
         u=r.request.url
         if u.endswith('/config.js'):return r.fulfill(body="window.AGATHE_CONFIG={url:'http://mock',anon:'anon'};",content_type='application/javascript')
         if u.endswith('/vendor/supabase.js'):return r.fulfill(body=MOCK,content_type='application/javascript')
+        if u.endswith('/api/chat'):
+            CHAT.append(json.loads(r.request.post_data or '{}'))
+            if CHAT_MODE[0]=='err':return r.fulfill(status=503,body=json.dumps({'error':"L'assistant n'est pas encore configuré (clé ANTHROPIC_API_KEY absente dans Vercel)."}),content_type='application/json')
+            return r.fulfill(status=200,body=json.dumps({'answer':'**1 dossier** en retard :\n- AIT0000126 (client A)'}),content_type='application/json')
         if u.startswith('http://localhost'):return r.continue_()
         return r.abort()
     ctx.route('**/*',route)
@@ -114,6 +118,23 @@ with sync_playwright() as p:
     chk('L2 restauration : dossiers et marque restaurés, éléments non autorisés ignorés','chunks/c000' in ks and 'config/brand' in ks and 'audit/x' not in ks and 'config/roles' not in ks and not any(k.startswith('chunks/..') for k in ks),ks)
     r=pg.evaluate("""async()=>{const f=new File([JSON.stringify({agathe:1,docs:[{parent:'config',id:'brand',data:{nom:'HACK'}}]})],'x.json');const before=localStorage.getItem('__m');await bkImport({files:[f],value:''});return [resp,before===localStorage.getItem('__m')]}""")
     chk('L3 restauration sans effet pour un utilisateur ordinaire',r==[False,True],r)
+    # assistant (chat)
+    po.evaluate("cm();view='dash';render()");po.wait_for_timeout(500)
+    chk('N1 bouton Assistant visible pour le Super Admin',po.is_visible('#chatbtn'))
+    po.click('#chatbtn');po.wait_for_timeout(300)
+    chk('N2 fenêtre ouverte avec suggestions',po.is_visible('#agc') and po.locator('#agsg button').count()==4)
+    po.fill('#chatin','Quels dossiers en retard ?');po.press('#chatin','Enter');po.wait_for_timeout(1200)
+    chk('N3 question envoyée avec la session, réponse affichée en gras et lien dossier',len(CHAT)==1 and CHAT[0]['messages'][-1]['content']=='Quels dossiers en retard ?' and po.locator('#agm .aga b').count()>=1 and po.locator('#agm a.dn').count()==1,CHAT)
+    po.click('#agm a.dn');po.wait_for_timeout(700)
+    chk('N4 clic sur le n° de dossier ouvre la fiche','AIT0000126' in po.inner_text('#md'))
+    po.evaluate("cm()");CHAT_MODE[0]='err';po.click('#agsg button >> nth=0') if po.locator('#agsg button').count() else po.evaluate("agSend('test erreur')");po.wait_for_timeout(1000)
+    chk('N5 message d’erreur lisible si l’assistant n’est pas configuré','ANTHROPIC_API_KEY' in po.inner_text('#agm .aga.err'))
+    chk('N6 historique : 2e envoi contient la 1re question et la 1re réponse',len(CHAT)==2 and len(CHAT[1]['messages'])==3 and CHAT[1]['messages'][1]['role']=='assistant',CHAT[-1] if CHAT else None)
+    po.click('#agc .h button[aria-label=Fermer]');po.wait_for_timeout(200)
+    chk('N7 fermeture : bouton de nouveau visible',po.is_visible('#chatbtn') and not po.is_visible('#agc'))
+    chk('N8 case « assistant » proposée au Super Admin',po.evaluate("PALL.includes('chat')"))
+    r=pg.evaluate("[!!document.getElementById('chatbtn')&&!document.getElementById('chatbtn').hidden, can('chat')]")
+    chk('N9 utilisateur sans la case « assistant » : pas de bouton',r==[False,False],r)
     chk('Z aucune erreur JavaScript',not ERR,ERR[:3])
     b.close()
 srv.terminate()

@@ -10,6 +10,7 @@ base de données, authentification et stockage de fichiers sur **Supabase**.
 public/index.html        l'application (interface en français)
 public/claude-shim.js    accès aux données (Supabase) : collections/documents, fichiers, téléchargements
 api/users.js             gestion des comptes (Super Administrateur uniquement) - clé secrète côté serveur
+api/chat.js              assistant AGATHE (Claude) : consultation des dossiers selon les droits de l'utilisateur
 supabase/schema.sql      tables + règles de sécurité (RLS) + stockage
 build.js                 génère public/config.js depuis les variables Vercel
 test/                    tests automatiques (voir plus bas)
@@ -71,10 +72,21 @@ données d'entreprise et ne doit **pas** être mis dans GitHub). Le même écran
 complète (dossiers, clients, fiche entreprise) à tout moment. Les documents joints (PDF, Word, Excel) ne sont
 pas inclus : à rattacher de nouveau depuis l'onglet « Archives » de chaque dossier.
 
+### 4. Assistant AGATHE (facultatif)
+1. Créez une clé sur https://console.anthropic.com (« API Keys »), avec un moyen de paiement : chaque question
+   coûte quelques centimes. Fixez une limite de dépense mensuelle dans la console.
+2. Vercel > Settings > Environment Variables : `ANTHROPIC_API_KEY` = la clé (secrète). Facultatif :
+   `ANTHROPIC_MODEL` (par défaut `claude-sonnet-5-5`). Puis « Redeploy ».
+3. Dans AGATHE, « Comptes & journal » : cochez « Utiliser l'assistant AGATHE » pour chaque utilisateur autorisé
+   (le Super Administrateur l'a toujours). Les questions posées sont inscrites au journal.
+L'assistant consulte les dossiers sans jamais les modifier, et ne montre les montants de facture qu'aux comptes
+qui ont accès à la facturation.
+
 ## Tests automatiques
 
 ```
 python3 test/rls_test.py <dossier_socket_postgres> <port>   # règles de sécurité sur un vrai PostgreSQL
 node test/api_test.mjs                                      # serveur de comptes
+node test/chat_test.mjs                                     # assistant (API Claude simulée)
 python3 test/app_test.py                                    # application complète (Supabase simulé)
 ```
