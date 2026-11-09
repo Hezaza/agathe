@@ -2,7 +2,7 @@
 // La clé API Anthropic reste sur le serveur ; le document n'est pas conservé.
 import { admin } from './_lib.js';
 import { extract } from './_extract.js';
-import { aiConfig } from './_llm.js';
+import { aiConfig, withFallback } from './_llm.js';
 
 export const config = { maxDuration: 60 };
 
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     const own = p.role === 'owner', perms = p.perms || {};
     if (!own && perms.edit !== true && perms.create !== true) return res.status(403).json({ error: 'Lecture de documents réservée aux comptes autorisés à créer ou modifier des dossiers' });
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-    const out = await extract({ body, cfg, fetchImpl: fetch });
+    const out = await withFallback(cfg, (c) => extract({ body, cfg: c, fetchImpl: fetch }));
     try {
       const t = new Date().toISOString();
       await sb.from('docs').insert({ parent: 'audit', id: t.replace(/\D/g, '') + Math.random().toString(36).slice(2, 6), data: { t, u: p.nom || p.email, uid: p.id, cat: own ? 'SA' : 'U', a: 'lecture automatique de document', dos: String(body.dossier || '').slice(0, 30), document: out.type_document, champs: Object.keys(out.champs).length } });

@@ -73,6 +73,17 @@ const toolMsg = gb1.messages.find((m) => m.role === 'tool'), asst = gb1.messages
 chk('Groq : appel d’outil et résultat renvoyés au bon format', asst && asst.tool_calls[0].id === 'c1' && toolMsg && toolMsg.tool_call_id === 'c1' && toolMsg.content.includes('AIT0000426'));
 let eg = null; try { await C.chat({ messages: [{ role: 'user', content: 'x' }], profile: agent, rows, cfg: G.aiConfig({ GROQ_API_KEY: 'gk' }), today, fetchImpl: fakeGroq([{ status: 429 }]) }); } catch (e) { eg = e; }
 chk('Groq : limite gratuite atteinte → message clair', eg && /Limite gratuite Groq/.test(eg.message));
+// --- Bascule automatique : Claude sans crédit -> Groq
+const both = G.aiConfig({ ANTHROPIC_API_KEY: 'a', GROQ_API_KEY: 'g' });
+chk('bascule : Groq prévu en secours de Claude', both.provider === 'anthropic' && both.fallback && both.fallback.provider === 'groq');
+const mixed = async (url, o) => { (mixed.urls = mixed.urls || []).push(url); if (url.includes('anthropic')) return { ok: false, status: 400, json: async () => ({ error: { type: 'invalid_request_error', message: 'Your credit balance is too low to access the Anthropic API.' } }) }; return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'Réponse Groq' } }] }) }; };
+let usedP = null;
+const ob = await G.withFallback(both, (c) => { usedP = c.provider; return C.chat({ messages: [{ role: 'user', content: 'Bonjour' }], profile: agent, rows, cfg: c, today, fetchImpl: mixed }); });
+chk('bascule : crédit Anthropic épuisé → réponse de Groq', ob.answer === 'Réponse Groq' && usedP === 'groq' && mixed.urls[0].includes('anthropic') && mixed.urls[1].includes('groq') && ob.fallbackFrom === 'Claude', mixed.urls);
+const bad400 = async (url) => ({ ok: false, status: 400, json: async () => ({ error: { message: 'messages: invalid' } }) });
+let eb = null; try { await G.withFallback(both, (c) => C.chat({ messages: [{ role: 'user', content: 'x' }], profile: agent, rows, cfg: c, today, fetchImpl: bad400 })); } catch (e) { eb = e; }
+chk('bascule : pas de bascule pour une requête invalide (vraie erreur)', eb && /indisponible/.test(eb.message));
+chk('bascule : AI_PROVIDER=anthropic désactive le secours', G.aiConfig({ ANTHROPIC_API_KEY: 'a', GROQ_API_KEY: 'g', AI_PROVIDER: 'anthropic' }).fallback === null);
 const f3 = fakeClaude(Array(10).fill({ stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 'z', name: 'alertes', input: {} }] }));
 const o3 = await C.chat({ messages: [{ role: 'user', content: 'boucle' }], profile: agent, rows, apiKey: 'k', model: 'm', today, fetchImpl: f3 });
 chk('boucle infinie limitée à 6 appels', f3.calls.length === 6 && /pas pu terminer/.test(o3.answer));

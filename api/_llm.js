@@ -5,9 +5,21 @@
 export function aiConfig(env = process.env) {
   const forced = String(env.AI_PROVIDER || '').toLowerCase();
   const useGroq = forced === 'groq' ? !!env.GROQ_API_KEY : forced === 'anthropic' ? false : !env.ANTHROPIC_API_KEY && !!env.GROQ_API_KEY;
-  if (useGroq) return { provider: 'groq', apiKey: env.GROQ_API_KEY, model: env.GROQ_MODEL || 'openai/gpt-oss-120b', visionModel: env.GROQ_VISION_MODEL || 'qwen/qwen3.8-27b', label: 'Groq' };
-  if (env.ANTHROPIC_API_KEY) return { provider: 'anthropic', apiKey: env.ANTHROPIC_API_KEY, model: env.ANTHROPIC_MODEL || 'claude-sonnet-5-5', visionModel: env.ANTHROPIC_MODEL || 'claude-sonnet-5-5', label: 'Claude' };
+  const groq = env.GROQ_API_KEY ? { provider: 'groq', apiKey: env.GROQ_API_KEY, model: env.GROQ_MODEL || 'openai/gpt-oss-120b', visionModel: env.GROQ_VISION_MODEL || 'qwen/qwen3.8-27b', label: 'Groq' } : null;
+  if (useGroq) return groq;
+  if (env.ANTHROPIC_API_KEY) return { provider: 'anthropic', apiKey: env.ANTHROPIC_API_KEY, model: env.ANTHROPIC_MODEL || 'claude-sonnet-5-5', visionModel: env.ANTHROPIC_MODEL || 'claude-sonnet-5-5', label: 'Claude', fallback: forced === 'anthropic' ? null : groq };
   return null;
+}
+
+// Exécute avec le fournisseur principal ; si Claude échoue (crédit épuisé, clé refusée, surcharge…) et qu'une clé Groq existe, bascule sur Groq.
+export async function withFallback(cfg, run) {
+  try { return await run(cfg); }
+  catch (e) {
+    if (!cfg.fallback || !e.switchable) throw e;
+    const out = await run(cfg.fallback);
+    if (out && typeof out === 'object') out.fallbackFrom = cfg.label;
+    return out;
+  }
 }
 
 export const NO_KEY = "L'assistant n'est pas encore configuré : ajoutez GROQ_API_KEY (gratuit) ou ANTHROPIC_API_KEY dans Vercel, puis redéployez.";
@@ -70,7 +82,7 @@ export async function callLLM(cfg, { system, tools, messages, max_tokens = 1200,
     headers: { 'content-type': 'application/json', 'x-api-key': cfg.apiKey, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({ model: model || cfg.model, max_tokens, ...(system ? { system } : {}), ...(tools && tools.length ? { tools } : {}), messages }) });
   j = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(errMsg(cfg, res.status, (j && j.error && j.error.message) || 'Erreur ' + res.status)), { status: 502 });
+  if (!res.ok) throw Object.assign(new Error(errMsg(cfg, res.status, (j && j.error && j.error.message) || 'Erreur ' + res.status)), { status: 502, switchable: res.status !== 400 || /credit|billing/i.test(JSON.stringify(j)) });
   return { content: j.content || [], stop_reason: j.stop_reason };
 }
 

@@ -102,3 +102,4 @@ Paiements enregistrés par dossier (champ `Paiements JSON`, droit « billw » po
 
 ## Fournisseur d'IA : Claude ou Groq (gratuit)
 L'assistant et la lecture de documents utilisent Claude si `ANTHROPIC_API_KEY` est définie, sinon Groq si `GROQ_API_KEY` est définie (clé gratuite sur console.groq.com). Avec Groq : assistant sur `openai/gpt-oss-120b` (modifiable par `GROQ_MODEL`), lecture de documents sur `qwen/qwen3.8-27b` (`GROQ_VISION_MODEL`) ; les PDF sont convertis en images (3 premières pages) dans le navigateur. `AI_PROVIDER=groq` ou `anthropic` force le choix.
+Si les deux clés sont présentes, Claude est essayé d'abord et l'application bascule automatiquement sur Groq quand Claude échoue (crédit épuisé, clé refusée, surcharge).

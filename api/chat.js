@@ -1,7 +1,7 @@
 // Vercel Serverless Function : assistant AGATHE (Claude). La clé API reste sur le serveur.
 import { admin } from './_lib.js';
 import { chat, rights } from './_chat.js';
-import { aiConfig, NO_KEY } from './_llm.js';
+import { aiConfig, NO_KEY, withFallback } from './_llm.js';
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -27,10 +27,11 @@ export default async function handler(req, res) {
       data.sort((a, b) => a.id.localeCompare(b.id)).forEach((d) => (d.data.rows || []).forEach((r) => rows.push(r)));
     }
     const today = new Date(Date.now() + 3600e3).toISOString().slice(0, 10); // heure du Gabon (UTC+1)
-    const out = await chat({ messages: body.messages, profile, rows, cfg, today, fetchImpl: fetch });
+    let used = cfg;
+    const out = await withFallback(cfg, (c) => { used = c; return chat({ messages: body.messages, profile, rows, cfg: c, today, fetchImpl: fetch }); });
     try {
       const t = new Date().toISOString(), q = String((body.messages || []).slice(-1)[0]?.content || '').slice(0, 300);
-      await sb.from('docs').insert({ parent: 'audit', id: t.replace(/\D/g, '') + Math.random().toString(36).slice(2, 6), data: { t, u: profile.nom || profile.email, uid: profile.id, cat: rt.owner ? 'SA' : 'U', a: 'question assistant', question: q, outils: out.tools.join(', '), ia: cfg.label } });
+      await sb.from('docs').insert({ parent: 'audit', id: t.replace(/\D/g, '') + Math.random().toString(36).slice(2, 6), data: { t, u: profile.nom || profile.email, uid: profile.id, cat: rt.owner ? 'SA' : 'U', a: 'question assistant', question: q, outils: out.tools.join(', '), ia: used.label } });
     } catch (e) { /* journal facultatif */ }
     res.status(200).json({ answer: out.answer });
   } catch (e) {
