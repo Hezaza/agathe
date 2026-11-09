@@ -7,7 +7,7 @@ const FS = 'Statut du Dossier', FC = 'Nom Client', AP = "Date d'arrivée prévue
 const PAGE_PERMS = ['p_dash', 'p_list', 'open', 'p_alr', 'p_rec', 'p_cli'];
 const BILL_PERMS = ['bill', 'billw', 'rec'];
 const BRIEF = ['N° dossier', 'Type de dossier', FC, FS, 'N° BL/LTA', 'Nature marchandises', "Date d'ouverture", AP, AR, LV];
-const HIDDEN = new Set(['Facture JSON', 'Modifié par', 'Modifié le']);
+const HIDDEN = new Set(['Facture JSON', 'Paiements JSON', 'Modifié par', 'Modifié le']);
 
 export function rights(profile) {
   const own = profile && profile.role === 'owner';
