@@ -90,3 +90,12 @@ node test/api_test.mjs                                      # serveur de comptes
 node test/chat_test.mjs                                     # assistant (API Claude simulée)
 python3 test/app_test.py                                    # application complète (Supabase simulé)
 ```
+
+## Sauvegarde automatique
+Chaque nuit vers 3 h (heure du Gabon), Vercel Cron appelle `/api/backup` : toutes les données sont copiées dans l'espace de stockage privé `agathe-backups` de Supabase (créé automatiquement, accessible au seul serveur). Les 30 dernières sauvegardes sont conservées ; le Super Administrateur les liste, télécharge et restaure depuis « Comptes & journal ». Variable facultative : `CRON_SECRET` (sécurise l'appel planifié).
+
+## Encaissements
+Paiements enregistrés par dossier (champ `Paiements JSON`, droit « billw » pour saisir), créances par client et ancienneté, alertes au-delà de 30 jours, lettre de relance. Les factures émises avant la date de début du suivi (réglable par le Super Administrateur) sont « hors suivi ».
+
+## Lecture automatique de documents et devis
+`/api/extract` lit un BL, une LTA ou une facture fournisseur (PDF ou photo, 3 Mo max) avec Claude et propose les valeurs à reporter dans la fiche (nécessite `ANTHROPIC_API_KEY`, droit « create » ou « edit »). Le document n'est pas conservé. Onglet « Devis » dans la facturation, convertible en facture.
