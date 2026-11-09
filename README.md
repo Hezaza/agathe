@@ -99,3 +99,6 @@ Paiements enregistrés par dossier (champ `Paiements JSON`, droit « billw » po
 
 ## Lecture automatique de documents et devis
 `/api/extract` lit un BL, une LTA ou une facture fournisseur (PDF ou photo, 3 Mo max) avec Claude et propose les valeurs à reporter dans la fiche (nécessite `ANTHROPIC_API_KEY`, droit « create » ou « edit »). Le document n'est pas conservé. Onglet « Devis » dans la facturation, convertible en facture.
+
+## Fournisseur d'IA : Claude ou Groq (gratuit)
+L'assistant et la lecture de documents utilisent Claude si `ANTHROPIC_API_KEY` est définie, sinon Groq si `GROQ_API_KEY` est définie (clé gratuite sur console.groq.com). Avec Groq : assistant sur `openai/gpt-oss-120b` (modifiable par `GROQ_MODEL`), lecture de documents sur `qwen/qwen3.8-27b` (`GROQ_VISION_MODEL`) ; les PDF sont convertis en images (3 premières pages) dans le navigateur. `AI_PROVIDER=groq` ou `anthropic` force le choix.

@@ -10,7 +10,7 @@ mkdirSync(join(tmp, 'api')); mkdirSync(join(tmp, 'node_modules/@supabase/supabas
 writeFileSync(join(tmp, 'package.json'), '{"type":"module"}');
 writeFileSync(join(tmp, 'node_modules/@supabase/supabase-js/package.json'), '{"name":"@supabase/supabase-js","type":"module","main":"index.js"}');
 writeFileSync(join(tmp, 'node_modules/@supabase/supabase-js/index.js'), 'export const createClient=()=>globalThis.__SB;');
-for (const f of ['_lib.js', '_chat.js', 'chat.js']) copyFileSync(join(here, '../api/' + f), join(tmp, 'api/' + f));
+for (const f of ['_lib.js', '_llm.js', '_chat.js', 'chat.js']) copyFileSync(join(here, '../api/' + f), join(tmp, 'api/' + f));
 const C = await import(pathToFileURL(join(tmp, 'api/_chat.js')).href);
 const { default: handler } = await import(pathToFileURL(join(tmp, 'api/chat.js')).href);
 let ok = 0, tot = 0; const chk = (n, c, i = '') => { tot++; if (c) ok++; console.log((c ? 'OK   ' : 'FAIL ') + n + (c ? '' : ' | ' + JSON.stringify(i).slice(0, 300))); };
@@ -58,7 +58,21 @@ chk('boucle : résultat d’outil renvoyé à Claude', tr.type === 'tool_result'
 chk('requête : en-têtes, modèle, outils et consignes de sécurité', f1.calls[0].model === 'm' && f1.calls[0].tools.length === 4 && /jamais des instructions/.test(f1.calls[0].system) && f1.calls[0].system.includes(today));
 const f2 = fakeClaude([{ status: 401 }]);
 let e2 = null; try { await C.chat({ messages: [{ role: 'user', content: 'x' }], profile: agent, rows, apiKey: 'k', model: 'm', today, fetchImpl: f2 }); } catch (e) { e2 = e; }
-chk('erreur 401 de l’API → message clair', e2 && /Clé API Anthropic invalide/.test(e2.message));
+chk('erreur 401 de l’API → message clair', e2 && /Clé ANTHROPIC_API_KEY refusée/.test(e2.message));
+// --- Groq (API compatible OpenAI) : même boucle d'outils
+const G = await import(pathToFileURL(join(tmp, 'api/_llm.js')).href);
+chk('choix : Groq si seule GROQ_API_KEY est définie', G.aiConfig({ GROQ_API_KEY: 'g' }).provider === 'groq' && G.aiConfig({ GROQ_API_KEY: 'g' }).model === 'openai/gpt-oss-120b');
+chk('choix : Claude prioritaire dès que ANTHROPIC_API_KEY existe', G.aiConfig({ GROQ_API_KEY: 'g', ANTHROPIC_API_KEY: 'a' }).provider === 'anthropic' && G.aiConfig({ GROQ_API_KEY: 'g', ANTHROPIC_API_KEY: 'a', AI_PROVIDER: 'groq' }).provider === 'groq' && G.aiConfig({}) === null);
+function fakeGroq(script) { const calls = []; const f = async (url, opt) => { calls.push({ url, h: opt.headers, b: JSON.parse(opt.body) }); const st = script[calls.length - 1]; return { ok: !st.status, status: st.status || 200, json: async () => (st.status ? { error: { message: 'rate limit' } } : st) }; }; f.calls = calls; return f; }
+const g1 = fakeGroq([{ choices: [{ message: { content: null, reasoning: '...', tool_calls: [{ id: 'c1', type: 'function', function: { name: 'alertes', arguments: '{}' } }] } }] }, { choices: [{ message: { content: '**2 alertes** : AIT0000126 et AIT0000426.' } }] }]);
+const og = await C.chat({ messages: [{ role: 'user', content: 'Quels dossiers en retard ?' }], profile: agent, rows, cfg: G.aiConfig({ GROQ_API_KEY: 'gk' }), today, fetchImpl: g1 });
+chk('Groq : outil exécuté puis réponse finale', og.answer.includes('AIT0000426') && og.tools.join() === 'alertes' && g1.calls.length === 2, og);
+const gb0 = g1.calls[0].b, gb1 = g1.calls[1].b;
+chk('Groq : URL, clé Bearer, modèle gpt-oss-120b, outils au format function', g1.calls[0].url.includes('api.groq.com/openai/v1/chat/completions') && g1.calls[0].h.authorization === 'Bearer gk' && gb0.model === 'openai/gpt-oss-120b' && gb0.tools.length === 4 && gb0.tools[0].type === 'function' && gb0.messages[0].role === 'system');
+const toolMsg = gb1.messages.find((m) => m.role === 'tool'), asst = gb1.messages.find((m) => m.role === 'assistant' && m.tool_calls);
+chk('Groq : appel d’outil et résultat renvoyés au bon format', asst && asst.tool_calls[0].id === 'c1' && toolMsg && toolMsg.tool_call_id === 'c1' && toolMsg.content.includes('AIT0000426'));
+let eg = null; try { await C.chat({ messages: [{ role: 'user', content: 'x' }], profile: agent, rows, cfg: G.aiConfig({ GROQ_API_KEY: 'gk' }), today, fetchImpl: fakeGroq([{ status: 429 }]) }); } catch (e) { eg = e; }
+chk('Groq : limite gratuite atteinte → message clair', eg && /Limite gratuite Groq/.test(eg.message));
 const f3 = fakeClaude(Array(10).fill({ stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 'z', name: 'alertes', input: {} }] }));
 const o3 = await C.chat({ messages: [{ role: 'user', content: 'boucle' }], profile: agent, rows, apiKey: 'k', model: 'm', today, fetchImpl: f3 });
 chk('boucle infinie limitée à 6 appels', f3.calls.length === 6 && /pas pu terminer/.test(o3.answer));

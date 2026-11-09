@@ -1,3 +1,4 @@
+import { callVision } from './_llm.js';
 // Lecture automatique d'un document (BL, LTA, facture fournisseur, liste de colisage…) par Claude.
 // Logique testable sans réseau : construction de la requête et nettoyage de la réponse.
 
@@ -38,9 +39,7 @@ export function checkFile(body) {
   return { type, data };
 }
 
-export function buildRequest({ type, data, model, dossierType }) {
-  const src = { type: 'base64', media_type: type, data };
-  const block = type === 'application/pdf' ? { type: 'document', source: src } : { type: 'image', source: src };
+export function buildPrompt(dossierType) {
   const list = Object.entries(FIELDS).map(([k, d]) => `- "${k}" : ${d}`).join('\n');
   const prompt = `Tu aides un transitaire au Gabon à remplir la fiche d'un dossier ${dossierType || "d'importation"}.
 Lis le document joint (connaissement, LTA, facture fournisseur, liste de colisage, avis d'arrivée…) et extrais uniquement les informations qui y figurent réellement.
@@ -54,7 +53,13 @@ Règles :
 - Dates au format AAAA-MM-JJ. Nombres sans unité ni séparateur de milliers (point pour les décimales).
 - "type_document" : nature du document en quelques mots (ex. "Connaissement maritime").
 - "remarque" : une phrase courte si une information est douteuse ou partiellement lisible, sinon "".`;
-  return { model, max_tokens: 1500, messages: [{ role: 'user', content: [block, { type: 'text', text: prompt }] }] };
+  return prompt;
+}
+
+export function buildRequest({ type, data, model, dossierType }) {
+  const src = { type: 'base64', media_type: type, data };
+  const block = type === 'application/pdf' ? { type: 'document', source: src } : { type: 'image', source: src };
+  return { model, max_tokens: 1500, messages: [{ role: 'user', content: [block, { type: 'text', text: buildPrompt(dossierType) }] }] };
 }
 
 const MONTHS = { jan: 1, feb: 2, fev: 2, 'fév': 2, mar: 3, apr: 4, avr: 4, may: 5, mai: 5, jun: 6, juin: 6, jul: 7, juil: 7, aug: 8, aou: 8, 'aoû': 8, sep: 9, oct: 10, nov: 11, dec: 12, 'déc': 12 };
@@ -95,19 +100,11 @@ export function parseAnswer(text) {
   return { type_document: String(j.type_document || '').slice(0, 80), remarque: String(j.remarque || '').slice(0, 300), champs };
 }
 
-export async function extract({ body, apiKey, model, fetchImpl }) {
-  const f = checkFile(body);
-  const req = buildRequest({ ...f, model, dossierType: String(body.dossierType || '').slice(0, 40) });
-  const r = await fetchImpl('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify(req),
-  });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) {
-    const msg = (j && j.error && j.error.message) || ('Erreur ' + r.status);
-    throw Object.assign(new Error(r.status === 401 ? 'Clé ANTHROPIC_API_KEY refusée : vérifiez-la dans Vercel' : /credit|billing/i.test(msg) ? 'Crédit Anthropic insuffisant : rechargez le compte sur console.anthropic.com' : 'Lecture impossible : ' + msg), { status: 502 });
-  }
-  const text = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('\n');
+export async function extract({ body, apiKey, model, fetchImpl, cfg }) {
+  cfg = cfg || { provider: 'anthropic', apiKey, model, visionModel: model };
+  const list = Array.isArray(body && body.images) && body.images.length ? body.images.slice(0, 3) : [body];
+  const files = list.map(checkFile);
+  if (files.reduce((n, f) => n + f.data.length * 0.75, 0) > MAX_BYTES) throw Object.assign(new Error('Fichier trop volumineux (3 Mo maximum)'), { status: 413 });
+  const text = await callVision(cfg, { prompt: buildPrompt(String(body.dossierType || '').slice(0, 40)), files, max_tokens: 1500 }, fetchImpl);
   return parseAnswer(text);
 }

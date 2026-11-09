@@ -9,7 +9,7 @@ mkdirSync(join(tmp, 'api')); mkdirSync(join(tmp, 'node_modules/@supabase/supabas
 writeFileSync(join(tmp, 'package.json'), '{"type":"module"}');
 writeFileSync(join(tmp, 'node_modules/@supabase/supabase-js/package.json'), '{"name":"@supabase/supabase-js","type":"module","main":"index.js"}');
 writeFileSync(join(tmp, 'node_modules/@supabase/supabase-js/index.js'), 'export const createClient=()=>globalThis.__SB;');
-for (const f of ['_lib.js', '_extract.js', 'extract.js']) copyFileSync(join(here, '../api/' + f), join(tmp, 'api/' + f));
+for (const f of ['_lib.js', '_llm.js', '_extract.js', 'extract.js']) copyFileSync(join(here, '../api/' + f), join(tmp, 'api/' + f));
 const X = await import(pathToFileURL(join(tmp, 'api/_extract.js')).href);
 const { default: handler } = await import(pathToFileURL(join(tmp, 'api/extract.js')).href);
 
@@ -49,6 +49,18 @@ e = null; try { await X.extract({ body: { type: 'application/pdf', data: B64 }, 
 ok(e && /Clé ANTHROPIC_API_KEY refusée/.test(e.message), 'clé refusée : message explicite');
 e = null; try { await X.extract({ body: { type: 'application/pdf', data: B64 }, apiKey: 'k', model: 'm', fetchImpl: fakeFetch(400, { error: { message: 'Your credit balance is too low' } }) }); } catch (x) { e = x; }
 ok(e && /Crédit Anthropic insuffisant/.test(e.message), 'crédit insuffisant : message explicite');
+
+// Groq : images via le modèle de vision, PDF à convertir en images
+const L = await import(pathToFileURL(join(tmp, 'api/_llm.js')).href);
+const gcfg = L.aiConfig({ GROQ_API_KEY: 'gk' });
+const gf = async (url, o) => { gf.last = { url, b: JSON.parse(o.body), h: o.headers }; return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: ans } }] }) }; };
+const IMG = Buffer.from('fakejpeg').toString('base64');
+const og = await X.extract({ body: { images: [{ type: 'image/jpeg', data: IMG }, { type: 'image/jpeg', data: IMG }] }, cfg: gcfg, fetchImpl: gf });
+const gc = gf.last.b.messages[0].content;
+ok(og.champs['N° BL/LTA'] === 'MEDU1234567' && gf.last.url.includes('api.groq.com') && gf.last.b.model === 'qwen/qwen3.8-27b', 'Groq : lecture par le modèle de vision');
+ok(gc[0].type === 'text' && gc.filter((c) => c.type === 'image_url').length === 2 && gc[1].image_url.url.startsWith('data:image/jpeg;base64,') && !gf.last.b.tools, 'Groq : pages envoyées en images (data URL), sans outils');
+e = null; try { await X.extract({ body: { type: 'application/pdf', data: B64 }, cfg: gcfg, fetchImpl: gf }); } catch (x) { e = x; }
+ok(e && e.status === 415 && e.code === 'need_images', 'Groq : PDF → demande de conversion en images au navigateur');
 
 // Gestionnaire HTTP : droits
 const res = () => { const o = { code: 0, body: null, setHeader() {}, status(c) { o.code = c; return o; }, json(b) { o.body = b; return o; } }; return o; };
