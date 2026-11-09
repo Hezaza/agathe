@@ -622,7 +622,7 @@ try{const L=m.querySelectorAll('.aga');if(L.length>n0){const a=L[L.length-1];if(
 {const f=window.agToggle;window.agToggle=function(o){if(!o){voxStop();try{VOX.rec&&VOX.rec.stop()}catch(e){}}return f.apply(this,arguments)}}
 {const f=window.agReset;window.agReset=function(){voxStop();return f.apply(this,arguments)}}
 /* ===== Mot d'activation « AGATHE » (écoute continue du navigateur) ===== */
-var WAKE={on:false,rec:null,running:false,paused:0,ac:null,fails:0,endCb:null};try{WAKE.on=localStorage.getItem('agathe_wake')==='1'}catch(e){}
+var WAKE={on:false,rec:null,running:false,paused:0,ac:null,fails:0,endCb:null};WAKE.on=true;try{WAKE.on=localStorage.getItem('agathe_wake')!=='0'}catch(e){}
 var WAKE_RE=/(?:^|[^a-z])(?:h?e+y\s+|ok\s+|dis\s+)?(a\s?gath?e?s?|agata|agat)(?=$|[^a-z])/;
 function wakeNorm(t){return String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase()}
 function wakeAllowed(){return AUTHED&&micOk()&&!!$('#agc')&&can('chat')}
@@ -631,7 +631,7 @@ function wakeUi(){const b=$('#agwake');if(b){b.classList.toggle('on',WAKE.on);b.
 function wakeStart(){if(!WAKE.on||WAKE.running||WAKE.paused>0||VOX.listening||!wakeAllowed())return;const R=window.SpeechRecognition||window.webkitSpeechRecognition;const rec=new R();rec.lang='fr-FR';rec.continuous=true;rec.interimResults=false;rec.maxAlternatives=3;WAKE.rec=rec;
 rec.onstart=()=>{WAKE.running=true;WAKE.fails=0;wakeUi()};
 rec.onresult=e=>{for(let k=e.resultIndex;k<e.results.length;k++){if(!e.results[k].isFinal)continue;const alts=[...e.results[k]].map(a=>a.transcript);const hit=alts.map(t=>({t,m:wakeNorm(t).match(WAKE_RE)})).find(x=>x.m);if(hit){wakeHit(hit.t,hit.m);return}}};
-rec.onerror=e=>{if(e.error=='not-allowed'||e.error=='service-not-allowed'){wakeSet(false);st('Micro refusé : autorisez le micro pour ce site pour utiliser « AGATHE »',7000)}else if(e.error!='no-speech'&&e.error!='aborted')WAKE.fails++};
+rec.onerror=e=>{if(e.error=='not-allowed'||e.error=='service-not-allowed'){WAKE.on=false;wakeUi();if(!WAKE.warned){WAKE.warned=1;st('Pour appeler l’assistant en disant « AGATHE », autorisez le micro pour ce site (icône du cadenas dans la barre d’adresse)',8000)}}else if(e.error!='no-speech'&&e.error!='aborted')WAKE.fails++};
 rec.onend=()=>{WAKE.running=false;WAKE.rec=null;wakeUi();const cb=WAKE.endCb;WAKE.endCb=null;if(cb)cb();if(WAKE.on&&WAKE.paused<=0)setTimeout(wakeStart,WAKE.fails>3?5000:350)};
 try{rec.start()}catch(e){WAKE.running=false}}
 function wakePause(){WAKE.paused++;return new Promise(res=>{if(!WAKE.rec){res();return}WAKE.endCb=res;try{WAKE.rec.abort()}catch(e){res()}setTimeout(res,600)})}
