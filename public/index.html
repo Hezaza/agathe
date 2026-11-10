@@ -129,6 +129,11 @@ if(!r[FC])return;for(const k of['Urgence (O/N)','Visite (O/N)'])if(r[k])r[k]=/^(
 const n=Math.ceil(out.length/40),ids=[];for(let i=0;i<n;i++){const id='c'+String(i).padStart(3,'0');ids.push(id);st(`Enregistrement ${i+1}/${n}…`,0);await db.collection('chunks').doc(id).set({rows:out.slice(i*40,i*40+40)})}
 for(const id of Object.keys(chunks))if(!ids.includes(id))await db.collection('chunks').doc(id).delete();st(out.length+' dossiers importés',4000)}catch(err){st('Import impossible : '+(err.message||err.code||err),6000)}};
 document.addEventListener('keydown',e=>{if(e.key=='Escape')cm()});
+/* Touche Entrée : passer au champ suivant (fiches, factures, formulaires) */
+document.addEventListener('keydown',e=>{if(e.key!='Enter'||e.defaultPrevented||e.isComposing||e.ctrlKey||e.altKey||e.metaKey)return;const t=e.target;if(!t||!t.matches)return;
+if(t.tagName=='TEXTAREA'||t.hasAttribute('onkeydown')||t.closest('form,#agc,#lg'))return;if(!t.matches('input,select'))return;if(/^(button|submit|reset|file|image|hidden)$/i.test(t.type||''))return;
+const sc=t.closest('#md,#pv,.bx')||document.querySelector('#mn')||document.body;const F=[...sc.querySelectorAll('input,select,textarea')].filter(x=>!x.disabled&&!x.readOnly&&!/^(button|submit|reset|file|image|hidden)$/i.test(x.type||'')&&x.offsetParent!==null&&!x.closest('[hidden]'));
+const i=F.indexOf(t);if(i<0)return;e.preventDefault();const n=F[i+1]||F.slice(i+1).find(Boolean);if(n){n.focus();try{if(n.select&&/^(text|search|tel|email|number|)$/i.test(n.type||''))n.select()}catch(x){}n.scrollIntoView({block:'nearest'})}else t.blur()});
 function paint(){const l=$('#lo');if(brand.logo){l.src=brand.logo;l.hidden=false}else l.hidden=true;$('#tt').textContent='AGATHE';document.title='AGATHE';gateUi()}
 /* ===== Authentification : e-mail + mot de passe (Supabase Auth) ===== */
 let lgMode='',dbR=null,ACC=null,ACCK='',OWNER_EMAIL='',AUTHED=false,failN=0,failT=0,SB=null;
