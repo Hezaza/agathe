@@ -270,7 +270,7 @@ const _aoa=aoa;aoa=function(L){const A=_aoa(L),J=['Facture JSON','Paiements JSON
 const DEFC={A:['DROITS DE DOUANE','TVA','TCI','RUSID'],B:['LTA','DEGROUPAGE MANIFESTE','BIETC','MAGASINAGE','AMM','AMENDE DE PRINCIPE'],P:['ETABLISSEMENT BIETC','LIVRAISON','LEVAGE','OUVERTURE DOSSIER','UTILISATION DU SYSTÈME INFORMATIQUE DOUANE','IMPRIMES DOUANE','HAD','VISITE DOUANE']};
 const SN={A:'A/ Compte-rendu débours douane',B:'B/ Autres débours',P:'C/ Prestations'};let cat=DEFC,fk='p';
 const iv=setInterval(()=>{if(db){clearInterval(iv);db.doc('config/catalogue').onSnapshot(s=>{const d=s.data();cat=d&&d.A?d:DEFC})}},300);
-const fn=(nd,k)=>(k=='c'?'FC-CPL-':k=='d'?'DV-POG-':'FC-POG-')+(/^A[IE]T/i.test(nd)?'':'M')+nd.replace(/\D/g,'');
+const fn=(nd,k)=>(k=='c'?'FC-CPL-':k=='d'?'DV-POG-':'FC-POG-')+(/^A[IE]T/i.test(nd)?'':/^D/i.test(nd)?'D':'M')+nd.replace(/\D/g,'');
 function fget(r,k){try{return JSON.parse(g(r,'Facture JSON'))[k]||{}}catch(e){return{}}}
 function fcol(){const f={},l={};document.querySelectorAll('#md [data-f]').forEach(e=>f[e.dataset.f]=e.value.trim());document.querySelectorAll('#md [data-l]').forEach(e=>{const v=num(e.value);if(v)l[e.dataset.l]=v});const afc=document.querySelector('#md #afc');if(afc&&afc.checked){const bb=MI('B').reduce((a,n)=>a+(l['B|'+n]||0),0);const av=Math.round(bb*.03);if(av)l[AFK]=av}f.l=l;return f}
 const AFK='B|AVANCE DE FONDS 3%';
