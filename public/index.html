@@ -270,7 +270,7 @@ const _aoa=aoa;aoa=function(L){const A=_aoa(L),J=['Facture JSON','Paiements JSON
 const DEFC={A:['DROITS DE DOUANE','TVA','TCI','RUSID'],B:['LTA','DEGROUPAGE MANIFESTE','BIETC','MAGASINAGE','AMM','AMENDE DE PRINCIPE'],P:['ETABLISSEMENT BIETC','LIVRAISON','LEVAGE','OUVERTURE DOSSIER','UTILISATION DU SYSTÈME INFORMATIQUE DOUANE','IMPRIMES DOUANE','HAD','VISITE DOUANE']};
 const SN={A:'A/ Compte-rendu débours douane',B:'B/ Autres débours',P:'C/ Prestations'};let cat=DEFC,fk='p';
 const iv=setInterval(()=>{if(db){clearInterval(iv);db.doc('config/catalogue').onSnapshot(s=>{const d=s.data();cat=d&&d.A?d:DEFC})}},300);
-const fn=(nd,k)=>(k=='c'?'FC-CPL-':k=='d'?'DV-POG-':'FC-POG-')+(/^A[IE]T/i.test(nd)?'':/^D/i.test(nd)?'D':'M')+nd.replace(/\D/g,'');
+const fn=(nd,k)=>(k=='c'?'FC-CPL-':k=='d'?'DV-POG-':'FC-POG-')+(/^A[IE]T/i.test(nd)?'A':/^D/i.test(nd)?'D':'M')+nd.replace(/\D/g,'');
 function fget(r,k){try{return JSON.parse(g(r,'Facture JSON'))[k]||{}}catch(e){return{}}}
 function fcol(){const f={},l={};document.querySelectorAll('#md [data-f]').forEach(e=>f[e.dataset.f]=e.value.trim());document.querySelectorAll('#md [data-l]').forEach(e=>{const v=num(e.value);if(v)l[e.dataset.l]=v});const afc=document.querySelector('#md #afc');if(afc&&afc.checked){const bb=MI('B').reduce((a,n)=>a+(l['B|'+n]||0),0);const av=Math.round(bb*.03);if(av)l[AFK]=av}f.l=l;return f}
 const AFK='B|AVANCE DE FONDS 3%';
@@ -880,6 +880,18 @@ ${L.map(([r,E])=>`<tr><td>${esc(E.inv.map(v=>v.no).join(' + '))}</td><td>${esc(g
 <p>Nous vous remercions de bien vouloir procéder à leur règlement dans les meilleurs délais. Si votre paiement a été effectué entre-temps, nous vous prions de ne pas tenir compte de ce courrier et de nous transmettre la référence du règlement.</p>
 <p>Nous restons à votre disposition pour tout renseignement complémentaire.</p><p>Veuillez agréer, Madame, Monsieur, l’expression de nos salutations distinguées.</p><p style="margin-top:28px;text-align:right"><b>${esc(brand.nom||'')}</b><br>Service facturation</p></div>`);aud('lettre de relance',{client:x.nom,montant:x.reste})}
 {const f0=alerts;alerts=function(){const A=f0();try{if(encCan())rows.forEach(r=>{if(/ANNUL/i.test(g(r,FS)))return;const E=encOf(r);if(!E.suivi||E.reste<=0||E.j<=30)return;A.push([r,`Facture ${E.inv[0].no} impayée depuis ${E.j} j (reste ${nf(E.reste)} XAF)`,E.j>60?2:1])})}catch(e){}return A.sort((a,b)=>b[2]-a[2])}}
+/* ===== Renumérotation unique des factures Aérien (A) et Divers (D), faite une fois par le Super Admin ===== */
+async function factRenum(force){if(!resp||!db)return;try{const sn=await db.doc('config/migrations').get();const M=(sn&&sn.data&&sn.data())||{};if(M.factnumAD&&!force)return;
+const PRE={p:'FC-POG-',c:'FC-CPL-',d:'DV-POG-'},ch={},log=[];let n=0;
+for(const c in chunks)(chunks[c]||[]).forEach(r=>{const nd=g(r,'N° dossier'),air=/^A[IE]T/i.test(nd),div=/^D/i.test(nd);if(!nd||(!air&&!div))return;const dg=nd.replace(/\D/g,''),old=k=>PRE[k]+(air?'':'M')+dg;
+let J=null;try{J=JSON.parse(g(r,'Facture JSON')||'null')}catch(e){J=null}let mod=false;
+if(J&&typeof J=='object')['p','c','d'].forEach(k=>{if(J[k]&&J[k].no===old(k)){J[k].no=fn(nd,k);mod=true;log.push(old(k)+' → '+J[k].no)}});
+if(g(r,'Facture n°')===old('p')){r['Facture n°']=fn(nd,'p');if(!mod)log.push(old('p')+' → '+r['Facture n°']);mod=true}
+if(mod){if(J)r['Facture JSON']=JSON.stringify(J);ch[c]=1;n++}});
+for(const c in ch)await db.collection('chunks').doc(c).set({rows:chunks[c].map(({_c,_i,...x})=>x)});
+await db.doc('config/migrations').set({...M,factnumAD:new Date().toISOString(),factnumADn:n});
+aud('renumérotation des factures',{nombre:n,detail:log.slice(0,80).join(' ; ')});if(n)st(n+' facture(s) Aérien/Divers renumérotée(s) (A / D)',8000)}catch(e){console.error(e);st('Renumérotation des factures : échec ('+(e.message||e)+')',8000)}}
+{const iv3=setInterval(()=>{if(typeof resp!='undefined'&&resp&&db&&rows&&rows.length){clearInterval(iv3);setTimeout(()=>factRenum(),4000)}},1500)}
 /* ===== Devis ===== */
 /* Devis : affichage « Devis » dans l'aperçu */
 {const f=window.invShow;window.invShow=function(id){const r0=f.apply(this,arguments);try{if(fk=='d')document.querySelectorAll('#pv span, #pv div').forEach(s=>{if(s.childElementCount==0&&s.textContent.trim()=='Facture')s.textContent='Devis'})}catch(e){}return r0}}
