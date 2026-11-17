@@ -97,9 +97,9 @@ Chaque nuit vers 3 h (heure du Gabon), Vercel Cron appelle `/api/backup` : toute
 ## Encaissements
 Paiements enregistrés par dossier (champ `Paiements JSON`, droit « billw » pour saisir), créances par client et ancienneté, alertes au-delà de 30 jours, lettre de relance. Les factures émises avant la date de début du suivi (réglable par le Super Administrateur) sont « hors suivi ».
 
-## Lecture automatique de documents et devis
-`/api/extract` lit un BL, une LTA ou une facture fournisseur (PDF ou photo, 3 Mo max) avec Claude et propose les valeurs à reporter dans la fiche (nécessite `ANTHROPIC_API_KEY`, droit « create » ou « edit »). Le document n'est pas conservé. Onglet « Devis » dans la facturation, convertible en facture.
+## Devis
+Onglet « Devis » dans la facturation (numéro DV-POG-…), imprimable et convertible en facture ; non compté dans le récapitulatif ni dans les créances.
 
 ## Fournisseur d'IA : Claude ou Groq (gratuit)
-L'assistant et la lecture de documents utilisent Claude si `ANTHROPIC_API_KEY` est définie, sinon Groq si `GROQ_API_KEY` est définie (clé gratuite sur console.groq.com). Avec Groq : assistant sur `openai/gpt-oss-120b` (modifiable par `GROQ_MODEL`), lecture de documents sur `qwen/qwen3.8-27b` (`GROQ_VISION_MODEL`) ; les PDF sont convertis en images (3 premières pages) dans le navigateur. `AI_PROVIDER=groq` ou `anthropic` force le choix.
+L'assistant utilise Claude si `ANTHROPIC_API_KEY` est définie, sinon Groq si `GROQ_API_KEY` est définie (clé gratuite sur console.groq.com). Avec Groq : assistant sur `openai/gpt-oss-120b` (modifiable par `GROQ_MODEL`). `AI_PROVIDER=groq` ou `anthropic` force le choix.
 Si les deux clés sont présentes, Claude est essayé d'abord et l'application bascule automatiquement sur Groq quand Claude échoue (crédit épuisé, clé refusée, surcharge).
