@@ -66,6 +66,7 @@ th{background:var(--ac2);color:var(--navy);border-bottom:2px solid var(--ac3)}tr
 #fb table.flt{width:100%!important;table-layout:auto}@media (min-width:1360px){.flt td.fla{white-space:nowrap;width:auto}}
 .flt .tg{white-space:nowrap}
 body.vfac main{max-width:none}body.vfac #fb>.w{max-height:calc(100vh - 150px)}
+body.vfull main{max-width:none}body.vfull #m .w{max-height:calc(100vh - 190px);overflow:auto}body.vfull #m .w tr:first-child th{position:sticky;top:0;z-index:2}body.vfull #m .w tr:not(:first-child) th{position:static}@media print{body.vfull #m .w{max-height:none;overflow:visible}}
 </style></head><body>
 <header><img id="lo" alt="" hidden><h1 id="tt">AGATHE</h1>
 <nav id="nv"></nav><span class="sp"></span>
@@ -608,7 +609,7 @@ try{const s=(await SB.auth.getSession()).data.session;const r=await fetch('/api/
 if(!r.ok)throw new Error(j.error||('Erreur '+r.status));agHist.push({role:'assistant',content:j.answer});m.insertAdjacentHTML('beforeend','<div class="aga">'+agMd(j.answer)+'</div>')}
 catch(e){agHist.pop();m.insertAdjacentHTML('beforeend','<div class="aga err">'+esc(e.message||String(e))+'</div>')}
 finally{const w=$('#agw');if(w)w.remove();agBusy=false;$('#chatsend').disabled=false;m.scrollTop=m.scrollHeight}}
-{const f=render;render=function(){f();try{document.body.classList.toggle('vfac',view=='fac')}catch(e){}try{agUi()}catch(e){console.error(e)}}}
+{const f=render;render=function(){f();try{document.body.classList.toggle('vfac',view=='fac');document.body.classList.toggle('vfull',['dash','list','cli','alr','acc'].includes(view))}catch(e){}try{agUi()}catch(e){console.error(e)}}}
 /* ===== Assistant vocal : lecture des réponses + question au micro ===== */
 var VOX={on:true,rec:null,listening:false,voice:null};try{VOX.on=localStorage.getItem('agathe_vox')!=='0'}catch(e){}
 var voxOk=()=>'speechSynthesis' in window&&'SpeechSynthesisUtterance' in window;
