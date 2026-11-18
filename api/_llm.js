@@ -5,7 +5,7 @@
 export function aiConfig(env = process.env) {
   const forced = String(env.AI_PROVIDER || '').toLowerCase();
   const useGroq = forced === 'groq' ? !!env.GROQ_API_KEY : forced === 'anthropic' ? false : !env.ANTHROPIC_API_KEY && !!env.GROQ_API_KEY;
-  const groq = env.GROQ_API_KEY ? { provider: 'groq', apiKey: env.GROQ_API_KEY, model: env.GROQ_MODEL || 'openai/gpt-oss-120b', visionModel: env.GROQ_VISION_MODEL || 'qwen/qwen3.8-27b', label: 'Groq' } : null;
+  const groq = env.GROQ_API_KEY ? { provider: 'groq', apiKey: env.GROQ_API_KEY, model: env.GROQ_MODEL || 'openai/gpt-oss-120b', alts: String(env.GROQ_FALLBACK_MODELS || 'llama-3.3-70b-versatile,openai/gpt-oss-20b,llama-3.1-8b-instant').split(',').map((x) => x.trim()).filter(Boolean), visionModel: env.GROQ_VISION_MODEL || 'qwen/qwen3.8-27b', label: 'Groq' } : null;
   if (useGroq) return groq;
   if (env.ANTHROPIC_API_KEY) return { provider: 'anthropic', apiKey: env.ANTHROPIC_API_KEY, model: env.ANTHROPIC_MODEL || 'claude-sonnet-5-5', visionModel: env.ANTHROPIC_MODEL || 'claude-sonnet-5-5', label: 'Claude', fallback: forced === 'anthropic' ? null : groq };
   return null;
@@ -71,12 +71,24 @@ export async function callLLM(cfg, { system, tools, messages, max_tokens = 1200,
   let res, j;
   if (cfg.provider === 'groq') {
     const o = toOpenAI({ system, tools, messages });
-    const body = { model: model || cfg.model, messages: o.messages, max_completion_tokens: Math.max(max_tokens, 2000), temperature: 0.2 };
-    if (o.tools.length) { body.tools = o.tools; body.tool_choice = 'auto'; }
-    res = await fetchImpl(GROQ_URL, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + cfg.apiKey }, body: JSON.stringify(body) });
-    j = await res.json().catch(() => ({}));
-    if (!res.ok) throw Object.assign(new Error(errMsg(cfg, res.status, (j && j.error && j.error.message) || 'Erreur ' + res.status)), { status: 502 });
-    return fromOpenAI(j);
+    // Chaque modèle Groq a son propre quota gratuit : si l'un est saturé (429/413) ou indisponible, on essaie le suivant.
+    const chain = model ? [model] : [cfg.model, ...(cfg.alts || [])].filter((m, i, a) => m && a.indexOf(m) === i);
+    let last = null;
+    for (const m of chain) {
+      const body = { model: m, messages: o.messages, max_completion_tokens: Math.max(max_tokens, 1200), temperature: 0.2 };
+      if (/gpt-oss/.test(m)) body.reasoning_effort = 'low';
+      if (o.tools.length) { body.tools = o.tools; body.tool_choice = 'auto'; }
+      res = await fetchImpl(GROQ_URL, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + cfg.apiKey }, body: JSON.stringify(body) });
+      j = await res.json().catch(() => ({}));
+      if (res.ok) { const out = fromOpenAI(j); out.model = m; return out; }
+      const raw = (j && j.error && j.error.message) || 'Erreur ' + res.status;
+      last = { status: res.status, raw, retry: (res.headers && res.headers.get && res.headers.get('retry-after')) || '' };
+      const next = res.status === 429 || res.status === 413 || res.status === 404 || res.status >= 500 || /decommission|not exist|not found|does not support|tool/i.test(raw);
+      if (!next) break;
+    }
+    let msg = errMsg(cfg, last.status, last.raw);
+    if (last.status === 429 || last.status === 413) msg = 'Limite gratuite Groq atteinte pour le moment' + (last.retry ? ` : réessayez dans ${Math.ceil(Number(last.retry)) || 'quelques'} s` : ' : réessayez dans une minute');
+    throw Object.assign(new Error(msg), { status: 502 });
   }
   res = await fetchImpl('https://api.anthropic.com/v1/messages', { method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': cfg.apiKey, 'anthropic-version': '2023-06-01' },

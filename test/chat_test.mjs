@@ -71,8 +71,16 @@ const gb0 = g1.calls[0].b, gb1 = g1.calls[1].b;
 chk('Groq : URL, clé Bearer, modèle gpt-oss-120b, outils au format function', g1.calls[0].url.includes('api.groq.com/openai/v1/chat/completions') && g1.calls[0].h.authorization === 'Bearer gk' && gb0.model === 'openai/gpt-oss-120b' && gb0.tools.length === 4 && gb0.tools[0].type === 'function' && gb0.messages[0].role === 'system');
 const toolMsg = gb1.messages.find((m) => m.role === 'tool'), asst = gb1.messages.find((m) => m.role === 'assistant' && m.tool_calls);
 chk('Groq : appel d’outil et résultat renvoyés au bon format', asst && asst.tool_calls[0].id === 'c1' && toolMsg && toolMsg.tool_call_id === 'c1' && toolMsg.content.includes('AIT0000426'));
-let eg = null; try { await C.chat({ messages: [{ role: 'user', content: 'x' }], profile: agent, rows, cfg: G.aiConfig({ GROQ_API_KEY: 'gk' }), today, fetchImpl: fakeGroq([{ status: 429 }]) }); } catch (e) { eg = e; }
+let eg = null; try { await C.chat({ messages: [{ role: 'user', content: 'x' }], profile: agent, rows, cfg: G.aiConfig({ GROQ_API_KEY: 'gk' }), today, fetchImpl: fakeGroq([{ status: 429 }, { status: 429 }, { status: 429 }, { status: 429 }]) }); } catch (e) { eg = e; }
 chk('Groq : limite gratuite atteinte → message clair', eg && /Limite gratuite Groq/.test(eg.message));
+const g2 = fakeGroq([{ status: 429 }, { choices: [{ message: { content: 'Réponse du modèle de secours' } }] }]);
+const og2 = await C.chat({ messages: [{ role: 'user', content: 'Bonjour' }], profile: agent, rows, cfg: G.aiConfig({ GROQ_API_KEY: 'gk' }), today, fetchImpl: g2 });
+chk('Groq : quota de gpt-oss-120b atteint → bascule sur un autre modèle Groq', og2.answer === 'Réponse du modèle de secours' && g2.calls[0].b.model === 'openai/gpt-oss-120b' && g2.calls[1].b.model === 'llama-3.3-70b-versatile' && g2.calls[0].b.reasoning_effort === 'low' && !g2.calls[1].b.reasoning_effort);
+const big = Array.from({ length: 900 }, (_, i) => ({ 'N° dossier': 'MIT' + String(i).padStart(7, '0'), 'Nom Client': 'CLIENT ' + i, 'Statut du Dossier': 'DOSSIER EN COURS DE TRAITEMENT', 'Nature marchandises': 'MARCHANDISES DIVERSES', "Date d'arrivée prévue": '2026-10-01' }));
+const g3 = fakeGroq([{ choices: [{ message: { content: null, tool_calls: [{ id: 't1', type: 'function', function: { name: 'rechercher_dossiers', arguments: '{"limite":60}' } }] } }] }, { choices: [{ message: { content: 'ok' } }] }]);
+await C.chat({ messages: [{ role: 'user', content: 'liste' }], profile: agent, rows: big, cfg: G.aiConfig({ GROQ_API_KEY: 'gk' }), today, fetchImpl: g3 });
+const sz = JSON.stringify(g3.calls[1].b.messages).length;
+chk('Groq : requête compacte (< 8 000 tokens) même avec 900 dossiers et « limite 60 »', sz / 3.2 < 5000, { caracteres: sz });
 // --- Bascule automatique : Claude sans crédit -> Groq
 const both = G.aiConfig({ ANTHROPIC_API_KEY: 'a', GROQ_API_KEY: 'g' });
 chk('bascule : Groq prévu en secours de Claude', both.provider === 'anthropic' && both.fallback && both.fallback.provider === 'groq');

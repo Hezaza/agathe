@@ -3,6 +3,8 @@ import { admin } from './_lib.js';
 import { chat, rights } from './_chat.js';
 import { aiConfig, NO_KEY, withFallback } from './_llm.js';
 
+export const config = { maxDuration: 60 };
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Méthode non autorisée' });
