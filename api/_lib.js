@@ -2,7 +2,7 @@
 // Utilise la clé « service_role » de Supabase, qui ne quitte JAMAIS le serveur.
 import { createClient } from '@supabase/supabase-js';
 
-const PERM_KEYS = ['p_dash','p_list','p_alr','p_cli','p_rec','bill','open','create','edit','annul','del',
+const PERM_KEYS = ['p_dash','p_list','p_alr','p_cli','p_rec','bill','kpi','open','create','edit','annul','del',
   'docs','billw','rec','dview','dadd','ddel','clients','cdel','export','import','chat'];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const pwOk = (p) => typeof p === 'string' && p.length >= 10 && /[A-Za-z]/.test(p) && /\d/.test(p);

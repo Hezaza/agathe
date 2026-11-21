@@ -814,7 +814,7 @@ await db.doc(col+'/'+id2).set({dos,nom,ext:'pdf',mime:'application/pdf',taille:b
 /* ===== Droits d'accès A/B/C, provenance obligatoire et journal ===== */
 let ROLES={map:{},c:{},b:{}},ulog=[],unsubA=null;
 /* ===== Comptes utilisateurs et permissions individuelles (Super Administrateur uniquement) ===== */
-const PGRP=[['Pages visibles',[['p_dash','Tableau de bord'],['p_list','Liste des dossiers'],['p_alr','Alertes'],['p_cli','Page Clients'],['p_rec','Récapitulatif client'],['bill','Documents & facturation (consulter la page et les factures)']]],
+const PGRP=[['Pages visibles',[['p_dash','Tableau de bord'],['p_list','Liste des dossiers'],['p_alr','Alertes'],['p_cli','Page Clients'],['p_rec','Récapitulatif client'],['bill','Documents & facturation (consulter la page et les factures)'],['kpi','Indicateurs KPI (consulter et imprimer les rapports)']]],
 ['Dossiers',[['open','Ouvrir la fiche d’un dossier'],['create','Ouvrir (créer) un nouveau dossier'],['edit','Modifier les informations et les étapes d’un dossier'],['annul','Annuler un dossier'],['del','Supprimer un dossier']]],
 ['Documents et facturation',[['docs','Imprimer fiche d’ouverture, ordre de transit, bon de livraison'],['billw','Créer et modifier les factures'],['rec','Récapitulatif des prestations (tous les dossiers)'],['dview','Consulter les documents joints (onglet Archives)'],['dadd','Ajouter des documents joints (remplacer les siens)'],['ddel','Supprimer ses propres documents joints']]],
 ['Clients',[['clients','Créer et modifier les clients'],['cdel','Supprimer un client']]],
@@ -956,7 +956,7 @@ const cur=g(r,FS);if(/ANNUL/i.test(cur))return;if(/CLOTUR/i.test(cur)&&!(cur==CL
 f(id,FS,n);st('Statut mis à jour : '+n,3500);const se=document.querySelector('#md select[onchange*="Statut du Dossier"]');if(se&&$('#md').style.display=='flex'){if(![...se.options].some(o=>o.value==n))se.add(new Option(n,n));se.value=n;se.style.cssText='font-weight:600;'+stS(n)}}catch(e){console.error(e)}}}
 TABS.push(['kpi','KPI']);
 const TABS0=TABS.slice();
-const TABP={dash:'p_dash',list:'p_list',alr:'p_alr',cli:'p_cli',rec:'p_rec',fac:'bill',kpi:'p_dash'};
+const TABP={dash:'p_dash',list:'p_list',alr:'p_alr',cli:'p_cli',rec:'p_rec',fac:'bill',kpi:'kpi'};
 function rbTabs(){if(!AUTHED)return;const b=TABS0.filter(t=>!TABP[t[0]]||can(TABP[t[0]]));if(can('adm'))b.push(['acc','Comptes & journal']);TABS.length=0;b.forEach(t=>TABS.push(t));if(!TABS.some(t=>t[0]==view))view=TABS.length?TABS[0][0]:''}
 function rbUi(){const m={'Nouveau dossier':'create','Importer Excel':'import','Exporter Excel':'export'};document.querySelectorAll('header button,header label').forEach(e=>{const t=e.textContent;for(const k in m)if(t.indexOf(k)>=0)e.style.display=can(m[k])?'':'none';if(t.trim()=='\u2699')e.style.display=can('adm')?'':'none'});const it=$('#it');if(it)it.style.display=can('import')?'':'none';if($('#us'))$('#us').title='Cat\u00e9gorie '+rbCat()}
 {let _rp=null;setInterval(()=>{if(resp!==_rp){_rp=resp;rbTabs();if($('#md').style.display!='flex')render()}},500)}
