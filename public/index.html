@@ -1107,7 +1107,21 @@ m[DGK]='O';m['Modifié par']=ident;m['Modifié le']=today;
 const ks=Object.keys(chunks).sort();let id=ks[ks.length-1];if(!id||chunks[id].length+news.length>40){let x=ks.length;do{id='c'+String(x++).padStart(3,'0')}while(chunks[id]);chunks[id]=[]}
 chunks[id].push(...news);const cl=a=>a.map(({_c,_i,...x})=>x);
 try{for(const d of new Set([q[0],id]))await db.collection('chunks').doc(d).set({rows:cl(chunks[d])});build();try{aud('création sous-dossier',{dos:news.map(x=>x['N° dossier']).join(', ')})}catch(e){}st(news.length+' sous-dossier(s) créé(s)');if($('#md').style.display=='flex')op(dgId(m))}catch(e){st('Échec : '+(e.message||e.code),5000)}};
-function dgTog(id,on){sv(id,DGK,on?'O':'');setTimeout(()=>op(id),50)}
+function dgTog(id,on,cb){const q=id.split('|'),m=chunks[q[0]]&&chunks[q[0]][q[1]];if(!m)return;const all=on?[]:dgAll(g(m,'N° dossier'));if(!all.length){sv(id,DGK,on?'O':'');setTimeout(()=>op(id),50);return}dgUndo(id,cb)}
+var dgUndo=async function(id,cb){const q=id.split('|'),m=chunks[q[0]][q[1]],nd=g(m,'N° dossier'),all=dgAll(nd),back=()=>{if(cb)cb.checked=true};
+if(!can('del')&&!can('create')){back();return st('Annulation du dégroupage non autorisée pour votre compte',5000)}
+const fx=all.filter(s=>g(s,'Facture n°')||g(s,'Facture JSON')||g(s,'Paiements JSON')),dx=all.filter(s=>g(s,'N° Déclaration')||ok(g(s,'Date Déclaration validée'))||ok(g(s,'Date de saisie declaration provisoire')));
+let msg='Annuler le dégroupage du dossier '+nd+' ?\n\nLes '+all.length+' sous-dossier(s) seront supprimés :\n'+all.map(s=>'• '+g(s,'N° dossier')).join('\n');
+if(fx.length)msg+='\n\n⚠ Attention : facture ou paiement déjà saisi sur '+fx.map(s=>g(s,'N° dossier')).join(', ')+'. Ces informations seront perdues.';
+if(dx.length)msg+='\n\n⚠ Attention : déclaration déjà saisie sur '+dx.map(s=>g(s,'N° dossier')).join(', ')+'.';
+msg+='\n\nLe dossier mère est conservé tel quel.';
+if(!confirm(msg)){back();return}
+if(fx.length&&!confirm('Confirmez-vous la suppression des sous-dossiers déjà facturés ?')){back();return}
+const del=new Set(all),ch=new Set(all.map(s=>s._c).concat(q[0]));
+m[DGK]='';delete m[DGK];m['Modifié par']=ident;m['Modifié le']=today;
+for(const c of ch)chunks[c]=chunks[c].filter(r=>!del.has(r));
+const cl=a=>a.map(({_c,_i,...x})=>x);
+try{for(const c of ch)await db.collection('chunks').doc(c).set({rows:cl(chunks[c])});build();try{aud('annulation dégroupage',{dos:nd,sous:all.map(s=>g(s,'N° dossier')).join(', ')})}catch(e){}st('Dégroupage annulé : '+all.length+' sous-dossier(s) supprimé(s)',4000);const r=rows.find(x=>g(x,'N° dossier')==nd);if(r&&$('#md').style.display=='flex')op(dgId(r))}catch(e){st('Échec : '+(e.message||e.code),6000);try{loadChunks(await db.collection('chunks').get())}catch(x){}}};
 function dgTotH(m){const B=dgBal(m),S=dgSubs(g(m,'N° dossier')),c=x=>x.okk?'dgok':x.has?'dgko':'dgna';
 return`<tr class="dgsum"><td colspan="3">Total des ${S.length} sous-dossier(s)</td>${B.map(x=>`<td class="r">${dgF(x.t)}</td>`).join('')}<td colspan="4"></td></tr>
 <tr class="dgmo"><td colspan="3">Dossier mère (informations générales)</td>${B.map(x=>`<td class="r">${x.has?esc(x.mv):'—'}</td>`).join('')}<td colspan="4"></td></tr>
@@ -1119,7 +1133,7 @@ bx.querySelectorAll('input[data-k]').forEach(e=>{if(gen.has(e.dataset.k)){e.read
 else{const nd=g(r,'N° dossier'),all=dgAll(nd),on=g(r,DGK)=='O'||all.length>0,RG=['TTC','TR5','EXO','ATN','ATS','IM7','IM6','IM8'];
 const inp=(s,k,cls)=>`<input class="${cls||''}" value="${esc(g(s,k))}" data-k="${esc(k)}" onchange="sv('${dgId(s)}',this.dataset.k,this.value);dgRe('${id}')">`,
 sel=s=>{const v=g(s,'Régime');return`<select onchange="sv('${dgId(s)}','Régime',this.value)"><option></option>${[...new Set(RG.concat(v?[v]:[]))].map(x=>`<option ${x==v?'selected':''}>${esc(x)}</option>`).join('')}</select>`};
-w.innerHTML=`<label class="dgck"><input type="checkbox" ${on?'checked':''} ${all.length?'disabled':''} onchange="dgTog('${id}',this.checked)"> <b>Dégroupage</b> — diviser ce dossier en sous-dossiers${all.length?` <span class="a1">(${all.length} sous-dossier(s) ; décochage impossible tant qu’ils existent)</span>`:''}</label>`+(on?`<div class="dgp"><div class="dgsc"><table class="dgt"><thead><tr><th>N° sous-dossier</th><th>N° répertoire</th><th>Nature marchandises</th><th>Colis</th><th>Poids</th><th>Volume</th><th>Montant facture</th><th>N° CDE</th><th>Régime</th><th>Statut</th><th></th></tr></thead>
+w.innerHTML=`<label class="dgck"><input type="checkbox" ${on?'checked':''} onchange="dgTog('${id}',this.checked,this)"> <b>Dégroupage</b> — diviser ce dossier en sous-dossiers${all.length?` <span class="a1">(${all.length} sous-dossier(s) — décocher pour annuler le dégroupage)</span>`:''}</label>`+(on?`<div class="dgp"><div class="dgsc"><table class="dgt"><thead><tr><th>N° sous-dossier</th><th>N° répertoire</th><th>Nature marchandises</th><th>Colis</th><th>Poids</th><th>Volume</th><th>Montant facture</th><th>N° CDE</th><th>Régime</th><th>Statut</th><th></th></tr></thead>
 <tbody>${all.map(s=>`<tr class="${/ANNUL/i.test(g(s,FS))?'dgan':''}"><td><b>${esc(g(s,'N° dossier'))}</b></td><td>${esc(g(s,'Numéro de répertoire'))}</td><td>${inp(s,'Nature marchandises','w')}</td>${DGQ.map(k=>`<td>${inp(s,k,'n')}</td>`).join('')}<td>${inp(s,'N° Commande Client')}</td><td>${sel(s)}</td><td>${typeof stTag=='function'?stTag(g(s,FS)):esc(g(s,FS))}</td><td><button class="btn" title="Ouvrir la fiche du sous-dossier" onclick="op('${dgId(s)}')">Ouvrir</button></td></tr>`).join('')||'<tr><td colspan="11" class="a1">Aucun sous-dossier pour l’instant.</td></tr>'}</tbody>
 <tbody id="dgtt">${dgTotH(r)}</tbody></table></div>
 <div class="dgadd">${can('create')?`<input id="dgn" type="number" min="1" max="50" value="1"> <button class="btn p" onclick="dgAdd('${id}',$('#dgn').value)">+ Créer le(s) sous-dossier(s)</button>`:''} <span class="a1">Prochain n° : <b>${esc(dgNum(r,Math.max(0,...all.map(dgK))+1).nd)}</b> · répertoire <b>${esc(dgNum(r,Math.max(0,...all.map(dgK))+1).rp||'—')}</b>. L’ordre de transit du dossier mère reprend tous les sous-dossiers.</span></div></div>`:'');}
